@@ -1,58 +1,62 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SECA IAM &middot; Users</title>
+  <title>SECA IAM — Users</title>
+  <link rel="icon" type="image/svg+xml" href="/web/static/seca-icon.svg">
   <link rel="stylesheet" href="/web/static/style.css">
 </head>
 <body>
-  {{template "nav" .}}
-  <main>
-    <h1>Users</h1>
-    {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+  <div class="shell">
+    {{template "nav" .}}
+    <main class="doc">
+      <header class="doc-head">
+        <h1>Users</h1>
+        <p class="doc-meta">{{len .Users}} registered</p>
+      </header>
 
-    {{range .Users}}
-    <fieldset>
-      <legend>{{.Subject}} {{if .Admin}}(admin){{end}}</legend>
-      <p>{{.DisplayName}} &middot; created {{.CreatedAt}}</p>
+      {{if .Error}}<p class="notice notice-error">{{.Error}}</p>{{end}}
 
-      <table>
-        <tr><th>Tenant</th><th></th></tr>
-        {{range .Grants}}
-        <tr>
-          <td>{{.TenantID}}</td>
-          <td>
-            <form class="inline" method="post" action="/web/users/{{.Subject}}/grants/{{.TenantID}}/revoke">
-              <button type="submit" class="danger">Revoke</button>
-            </form>
-          </td>
-        </tr>
-        {{end}}
+      {{if .Users}}
+      <table class="register">
+        <thead>
+          <tr><th>Subject</th><th>Display name</th><th>Role</th><th>Registered</th></tr>
+        </thead>
+        <tbody>
+          {{range .Users}}
+          <tr>
+            <td><a class="table-link" href="/web/users/{{.Subject}}">{{.Subject}}</a></td>
+            <td>{{if .DisplayName}}{{.DisplayName}}{{else}}<span class="muted">—</span>{{end}}</td>
+            <td>{{if .Admin}}<span class="chip">Admin</span>{{else}}<span class="muted">Member</span>{{end}}</td>
+            <td>{{.CreatedAt}}</td>
+          </tr>
+          {{end}}
+        </tbody>
       </table>
+      {{else}}
+      <p class="empty">No users are registered yet. Add one below, then open it to grant tenant access.</p>
+      {{end}}
 
-      <form method="post" action="/web/users/{{.Subject}}/grants">
-        <select name="tenantId">
-          {{range $.Tenants}}<option value="{{.TenantID}}">{{.TenantID}}</option>{{end}}
-        </select>
-        <button type="submit">Grant tenant</button>
-      </form>
-
-      <form method="post" action="/web/users/{{.Subject}}/delete" style="margin-top:0.5rem">
-        <button type="submit" class="danger">Delete user</button>
-      </form>
-    </fieldset>
-    {{end}}
-
-    <fieldset>
-      <legend>Create a user</legend>
-      <form method="post" action="/web/users">
-        <p><input type="text" name="subject" placeholder="Subject (e.g. email)" required></p>
-        <p><input type="text" name="displayName" placeholder="Display name"></p>
-        <p><label><input type="checkbox" name="admin" value="true"> Admin</label></p>
-        <button type="submit">Create</button>
-      </form>
-    </fieldset>
-  </main>
+      <section class="panel">
+        <h2>Register a user</h2>
+        <form method="post" action="/web/users" class="form form-row">
+          <div class="field">
+            <label for="subject">Subject</label>
+            <input id="subject" type="text" name="subject" placeholder="e.g. an email or username" required>
+          </div>
+          <div class="field">
+            <label for="displayName">Display name</label>
+            <input id="displayName" type="text" name="displayName" placeholder="e.g. Alice Nguyen">
+          </div>
+          <label class="checkbox">
+            <input type="checkbox" name="admin" value="true">
+            Grant admin privileges
+          </label>
+          <button type="submit">Register</button>
+        </form>
+      </section>
+    </main>
+  </div>
 </body>
 </html>

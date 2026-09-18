@@ -65,12 +65,12 @@ func (wb *Web) handleLoginPage(w http.ResponseWriter, r *http.Request) {
 
 func (wb *Web) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		wb.render(w, "login.html", map[string]any{"Error": "invalid form submission"})
+		wb.render(w, "login.html", map[string]any{"Error": "That submission did not come through. Try again."})
 		return
 	}
 	pat := r.FormValue("pat")
 	if _, err := wb.Auth.Authenticate(r.Context(), pat); err != nil {
-		wb.render(w, "login.html", map[string]any{"Error": "invalid or revoked token"})
+		wb.render(w, "login.html", map[string]any{"Error": "That token is not valid, or it has been revoked."})
 		return
 	}
 	http.SetCookie(w, &http.Cookie{

@@ -1,13 +1,29 @@
 {{define "nav"}}
-<header>
-  <a href="/web/pats">SECA IAM</a>
-  <a href="/web/pats">My PATs</a>
-  {{if .User.Admin}}
-  <a href="/web/tenants">Tenants</a>
-  <a href="/web/users">Users</a>
-  {{end}}
-  <form class="inline" method="post" action="/web/logout" style="margin-left:auto">
-    <button type="submit">Log out ({{.User.Subject}})</button>
-  </form>
-</header>
+<aside class="rail">
+  <a class="rail-mark" href="/web/pats">
+    <img class="rail-mark-icon" src="/web/static/seca-icon.svg" alt="" width="26" height="21">
+    <span class="rail-mark-text">
+      <span class="rail-mark-name">SECA IAM</span>
+      <span class="rail-mark-sub">Credential office</span>
+    </span>
+  </a>
+
+  <nav class="rail-nav">
+    <a href="/web/pats"{{if eq .Active "pats"}} class="active" aria-current="page"{{end}}>Tokens</a>
+    {{if .User.Admin}}
+    <a href="/web/tenants"{{if eq .Active "tenants"}} class="active" aria-current="page"{{end}}>Tenants</a>
+    <a href="/web/users"{{if eq .Active "users"}} class="active" aria-current="page"{{end}}>Users</a>
+    {{end}}
+  </nav>
+
+  <div class="rail-identity">
+    <div class="rail-identity-row">
+      <span class="rail-identity-subject">{{.User.Subject}}</span>
+      {{if .User.Admin}}<span class="chip">Admin</span>{{end}}
+    </div>
+    <form method="post" action="/web/logout">
+      <button type="submit" class="link-button">Sign out</button>
+    </form>
+  </div>
+</aside>
 {{end}}

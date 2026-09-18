@@ -23,12 +23,12 @@ func (wb *Web) renderTenantsPage(w http.ResponseWriter, r *http.Request, errMsg 
 	for _, t := range tenants {
 		views = append(views, tenantView{TenantID: t.TenantID, DisplayName: t.DisplayName, CreatedAt: t.CreatedAt.Format(timeFormat)})
 	}
-	wb.render(w, "tenants.html", map[string]any{"User": user, "Tenants": views, "Error": errMsg})
+	wb.render(w, "tenants.html", map[string]any{"User": user, "Tenants": views, "Error": errMsg, "Active": "tenants"})
 }
 
 func (wb *Web) handleTenantsCreate(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		wb.renderTenantsPage(w, r, "invalid form submission")
+		wb.renderTenantsPage(w, r, "That submission did not come through. Try again.")
 		return
 	}
 	if _, err := wb.Tenants.Create(r.Context(), r.FormValue("tenantId"), r.FormValue("displayName")); err != nil {

@@ -6,6 +6,7 @@ package web
 import (
 	"embed"
 	"html/template"
+	"io/fs"
 	"net/http"
 
 	"github.com/eu-sovereign-cloud/iam/internal/service"
@@ -44,7 +45,14 @@ func New(auth *service.AuthService, users *service.UserService, tenants *service
 func (wb *Web) Router() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.Handle("GET /web/static/", http.StripPrefix("/web/static/", http.FileServerFS(staticFS)))
+	// staticFS's root is "static" (go:embed preserves the directory it's
+	// declared in), so a request for /web/static/style.css must resolve to
+	// "style.css" within an FS rooted at "static", not "static/style.css".
+	staticRoot, err := fs.Sub(staticFS, "static")
+	if err != nil {
+		panic("web: static assets not embedded correctly: " + err.Error())
+	}
+	mux.Handle("GET /web/static/", http.StripPrefix("/web/static/", http.FileServerFS(staticRoot)))
 
 	mux.HandleFunc("GET /web/login", wb.handleLoginPage)
 	mux.HandleFunc("POST /web/login", wb.handleLoginSubmit)
@@ -60,6 +68,7 @@ func (wb *Web) Router() *http.ServeMux {
 
 	mux.HandleFunc("GET /web/users", wb.requireAdmin(wb.handleUsersPage))
 	mux.HandleFunc("POST /web/users", wb.requireAdmin(wb.handleUsersCreate))
+	mux.HandleFunc("GET /web/users/{subject}", wb.requireAdmin(wb.handleUserDetailPage))
 	mux.HandleFunc("POST /web/users/{subject}/delete", wb.requireAdmin(wb.handleUsersDelete))
 	mux.HandleFunc("POST /web/users/{subject}/grants", wb.requireAdmin(wb.handleUsersGrant))
 	mux.HandleFunc("POST /web/users/{subject}/grants/{tenantId}/revoke", wb.requireAdmin(wb.handleUsersRevokeGrant))
