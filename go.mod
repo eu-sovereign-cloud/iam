@@ -2,6 +2,8 @@ module github.com/eu-sovereign-cloud/iam
 
 go 1.26.0
 
+toolchain go1.27.1
+
 require (
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
