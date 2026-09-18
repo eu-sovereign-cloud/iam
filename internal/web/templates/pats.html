@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SECA IAM &middot; My PATs</title>
+  <link rel="stylesheet" href="/web/static/style.css">
+</head>
+<body>
+  {{template "nav" .}}
+  <main>
+    <h1>My Personal Access Tokens</h1>
+
+    {{if .NewSecret}}
+    <p>New PAT created &mdash; copy the secret now, it will not be shown again:</p>
+    <p class="secret">{{.NewSecret}}</p>
+    {{end}}
+    {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+
+    <table>
+      <tr><th>Name</th><th>Created</th><th>Expires</th><th></th></tr>
+      {{range .PATs}}
+      <tr>
+        <td>{{.Name}}</td>
+        <td>{{.CreatedAt}}</td>
+        <td>{{if .ExpiresAt}}{{.ExpiresAt}}{{else}}never{{end}}</td>
+        <td>
+          <form class="inline" method="post" action="/web/pats/{{.ID}}/revoke">
+            <button type="submit" class="danger">Revoke</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </table>
+
+    <fieldset>
+      <legend>Create a new PAT</legend>
+      <form method="post" action="/web/pats">
+        <p><input type="text" name="name" placeholder="Name (e.g. laptop)"></p>
+        <p><input type="text" name="ttl" placeholder="TTL, e.g. 720h (blank = never expires)"></p>
+        <button type="submit">Create</button>
+      </form>
+    </fieldset>
+  </main>
+</body>
+</html>

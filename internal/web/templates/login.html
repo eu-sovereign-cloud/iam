@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SECA IAM &middot; Log in</title>
+  <link rel="stylesheet" href="/web/static/style.css">
+</head>
+<body>
+  <main>
+    <h1>SECA IAM</h1>
+    <p>Paste a Personal Access Token to sign in.</p>
+    {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+    <form method="post" action="/web/login">
+      <p><input type="password" name="pat" placeholder="iampat_..." style="width:100%" required></p>
+      <button type="submit">Log in</button>
+    </form>
+  </main>
+</body>
+</html>

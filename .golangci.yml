@@ -1,0 +1,30 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - errorlint
+    - testifylint
+    - unparam
+    - unconvert
+    - depguard
+  settings:
+    depguard:
+      rules:
+        model-has-no-internal-deps:
+          files:
+            - "**/internal/model/**"
+          deny:
+            - pkg: "github.com/eu-sovereign-cloud/iam/internal/(adapter|service|controller|web|config)"
+              desc: "internal/model must not depend on any other internal package (ADR 0002)"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

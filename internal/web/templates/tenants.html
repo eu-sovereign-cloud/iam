@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SECA IAM &middot; Tenants</title>
+  <link rel="stylesheet" href="/web/static/style.css">
+</head>
+<body>
+  {{template "nav" .}}
+  <main>
+    <h1>Tenants</h1>
+    {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+
+    <table>
+      <tr><th>Tenant ID</th><th>Display name</th><th>Created</th><th></th></tr>
+      {{range .Tenants}}
+      <tr>
+        <td>{{.TenantID}}</td>
+        <td>{{.DisplayName}}</td>
+        <td>{{.CreatedAt}}</td>
+        <td>
+          <form class="inline" method="post" action="/web/tenants/{{.TenantID}}/delete">
+            <button type="submit" class="danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </table>
+
+    <fieldset>
+      <legend>Create a tenant</legend>
+      <form method="post" action="/web/tenants">
+        <p><input type="text" name="tenantId" placeholder="Tenant ID" required></p>
+        <p><input type="text" name="displayName" placeholder="Display name"></p>
+        <button type="submit">Create</button>
+      </form>
+    </fieldset>
+  </main>
+</body>
+</html>

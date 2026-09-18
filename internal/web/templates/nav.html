@@ -1,0 +1,13 @@
+{{define "nav"}}
+<header>
+  <a href="/web/pats">SECA IAM</a>
+  <a href="/web/pats">My PATs</a>
+  {{if .User.Admin}}
+  <a href="/web/tenants">Tenants</a>
+  <a href="/web/users">Users</a>
+  {{end}}
+  <form class="inline" method="post" action="/web/logout" style="margin-left:auto">
+    <button type="submit">Log out ({{.User.Subject}})</button>
+  </form>
+</header>
+{{end}}

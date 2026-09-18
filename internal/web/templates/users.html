@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SECA IAM &middot; Users</title>
+  <link rel="stylesheet" href="/web/static/style.css">
+</head>
+<body>
+  {{template "nav" .}}
+  <main>
+    <h1>Users</h1>
+    {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+
+    {{range .Users}}
+    <fieldset>
+      <legend>{{.Subject}} {{if .Admin}}(admin){{end}}</legend>
+      <p>{{.DisplayName}} &middot; created {{.CreatedAt}}</p>
+
+      <table>
+        <tr><th>Tenant</th><th></th></tr>
+        {{range .Grants}}
+        <tr>
+          <td>{{.TenantID}}</td>
+          <td>
+            <form class="inline" method="post" action="/web/users/{{.Subject}}/grants/{{.TenantID}}/revoke">
+              <button type="submit" class="danger">Revoke</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </table>
+
+      <form method="post" action="/web/users/{{.Subject}}/grants">
+        <select name="tenantId">
+          {{range $.Tenants}}<option value="{{.TenantID}}">{{.TenantID}}</option>{{end}}
+        </select>
+        <button type="submit">Grant tenant</button>
+      </form>
+
+      <form method="post" action="/web/users/{{.Subject}}/delete" style="margin-top:0.5rem">
+        <button type="submit" class="danger">Delete user</button>
+      </form>
+    </fieldset>
+    {{end}}
+
+    <fieldset>
+      <legend>Create a user</legend>
+      <form method="post" action="/web/users">
+        <p><input type="text" name="subject" placeholder="Subject (e.g. email)" required></p>
+        <p><input type="text" name="displayName" placeholder="Display name"></p>
+        <p><label><input type="checkbox" name="admin" value="true"> Admin</label></p>
+        <button type="submit">Create</button>
+      </form>
+    </fieldset>
+  </main>
+</body>
+</html>
