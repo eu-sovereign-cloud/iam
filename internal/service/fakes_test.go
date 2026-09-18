@@ -2,7 +2,10 @@ package service_test
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -158,20 +161,18 @@ func (f *fakeGrantStore) DeleteGrant(_ context.Context, subject, tenantID string
 }
 
 type fakePATStore struct {
-	mu         sync.Mutex
-	pats       map[string]model.PAT
-	patsByHash map[string]string
+	mu   sync.Mutex
+	pats map[string]model.PAT
 }
 
 func newFakePATStore() *fakePATStore {
-	return &fakePATStore{pats: map[string]model.PAT{}, patsByHash: map[string]string{}}
+	return &fakePATStore{pats: map[string]model.PAT{}}
 }
 
 func (f *fakePATStore) CreatePAT(_ context.Context, p model.PAT) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.pats[p.ID] = p
-	f.patsByHash[p.TokenHash] = p.ID
 	return nil
 }
 
@@ -183,16 +184,6 @@ func (f *fakePATStore) GetPAT(_ context.Context, id string) (model.PAT, error) {
 		return model.PAT{}, fmt.Errorf("%w: %s", model.ErrNotFound, id)
 	}
 	return p, nil
-}
-
-func (f *fakePATStore) GetPATByHash(_ context.Context, hash string) (model.PAT, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	id, ok := f.patsByHash[hash]
-	if !ok {
-		return model.PAT{}, fmt.Errorf("%w: PAT", model.ErrNotFound)
-	}
-	return f.pats[id], nil
 }
 
 func (f *fakePATStore) ListPATsBySubject(_ context.Context, subject string) ([]model.PAT, error) {
@@ -210,28 +201,40 @@ func (f *fakePATStore) ListPATsBySubject(_ context.Context, subject string) ([]m
 func (f *fakePATStore) DeletePAT(_ context.Context, id string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if p, ok := f.pats[id]; ok {
-		delete(f.patsByHash, p.TokenHash)
-	}
 	delete(f.pats, id)
 	return nil
 }
 
-// fakeTokenGenerator returns deterministic, easily-inspectable tokens
-// instead of random ones, and hashes with a trivial prefix rather than
-// SHA-256 (adapter.TokenGenerator's real hashing is covered separately).
-type fakeTokenGenerator struct{ counter int }
-
-func (f *fakeTokenGenerator) NewToken() (raw string, hash string) {
-	f.counter++
-	raw = fmt.Sprintf("raw-token-%d", f.counter)
-	return raw, f.Hash(raw)
-}
-
-func (f *fakeTokenGenerator) Hash(raw string) string { return "hash:" + raw }
-
+// fakeSigner round-trips model.Claims through JSON+base64 instead of real
+// ES256 signing/verification — enough to exercise PATService/AuthService's
+// orchestration logic (sign at creation, verify at authentication) without
+// needing real crypto in service-level tests. The real ES256 Sign/Verify
+// path is covered by internal/adapter's own tests against the real Signer.
 type fakeSigner struct{}
 
 func (fakeSigner) Sign(claims model.Claims) (string, error) {
-	return fmt.Sprintf("signed(sub=%s,tenants=%v)", claims.Subject, claims.Tenants), nil
+	raw, err := json.Marshal(claims)
+	if err != nil {
+		return "", err
+	}
+	return "fake." + base64.RawURLEncoding.EncodeToString(raw) + ".signed", nil
+}
+
+func (fakeSigner) Verify(token string) (model.Claims, error) {
+	var claims model.Claims
+	body := strings.TrimSuffix(strings.TrimPrefix(token, "fake."), ".signed")
+	if body == token {
+		return model.Claims{}, fmt.Errorf("not a fake-signed token")
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(body)
+	if err != nil {
+		return model.Claims{}, err
+	}
+	if err := json.Unmarshal(raw, &claims); err != nil {
+		return model.Claims{}, err
+	}
+	// Expiry is deliberately not checked here: PATService.Authenticate's own
+	// pat.Expired(clock.Now()) check (against the injected, test-controlled
+	// Clock) is what tests rely on for expiry behavior, not wall-clock time.
+	return claims, nil
 }

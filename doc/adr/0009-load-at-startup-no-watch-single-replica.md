@@ -7,8 +7,9 @@ Accepted
 ## Context
 
 IAM's data volume (Users, Tenants, Grants, PATs for a self-install
-deployment) is small, and its read path (every token exchange, every admin
-page load) is latency-sensitive relative to the Kubernetes API. Building a
+deployment) is small, and its read path (every API request's bearer-auth
+check, every admin page load) is latency-sensitive relative to the
+Kubernetes API. Building a
 full watch/informer/reconciliation loop (the way ecp's `GenericController`
 does for CRDs) is disproportionate machinery for four flat resource kinds
 with no external side effects to reconcile.

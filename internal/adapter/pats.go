@@ -11,54 +11,49 @@ import (
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 )
 
-func patToSecret(p model.PAT, namespace string) (*corev1.Secret, error) {
-	sec := &corev1.Secret{}
-	sec.Name = patName(p.ID)
-	sec.Namespace = namespace
-	sec.Type = corev1.SecretTypeOpaque
-	sec.Labels = map[string]string{
+// PATs carry no secret material of their own — IAM never persists the raw
+// JWT or a hash of it, only bookkeeping metadata (ADR 0012) — so, unlike
+// the earlier opaque-token design, they're stored as ConfigMaps rather
+// than Secrets (ADR 0001).
+func patToConfigMap(p model.PAT, namespace string) (*corev1.ConfigMap, error) {
+	cm := &corev1.ConfigMap{}
+	cm.Name = patName(p.ID)
+	cm.Namespace = namespace
+	cm.Labels = map[string]string{
 		labelType: typePAT,
 		labelUser: shortHash(p.Subject),
 	}
-	sec.Annotations = map[string]string{
+	cm.Data = map[string]string{
 		"id":          p.ID,
 		dataSubject:   p.Subject,
 		dataName:      p.Name,
 		dataCreatedAt: p.CreatedAt.Format(time.RFC3339),
-	}
-	if p.ExpiresAt != nil {
-		sec.Annotations[dataExpiresAt] = p.ExpiresAt.Format(time.RFC3339)
+		dataExpiresAt: p.ExpiresAt.Format(time.RFC3339),
 	}
 	if p.Scope != nil {
 		scopeJSON, err := json.Marshal(p.Scope)
 		if err != nil {
 			return nil, fmt.Errorf("marshaling PAT scope: %w", err)
 		}
-		sec.Annotations[dataScope] = string(scopeJSON)
+		cm.Data[dataScope] = string(scopeJSON)
 	}
-	sec.Data = map[string][]byte{
-		dataTokenHash: []byte(p.TokenHash),
-	}
-	return sec, nil
+	return cm, nil
 }
 
-func patFromSecret(sec *corev1.Secret) (model.PAT, error) {
-	created, _ := time.Parse(time.RFC3339, sec.Annotations[dataCreatedAt])
+func patFromConfigMap(cm *corev1.ConfigMap) (model.PAT, error) {
+	created, _ := time.Parse(time.RFC3339, cm.Data[dataCreatedAt])
+	expires, err := time.Parse(time.RFC3339, cm.Data[dataExpiresAt])
+	if err != nil {
+		return model.PAT{}, fmt.Errorf("parsing expires-at: %w", err)
+	}
 	p := model.PAT{
-		ID:        sec.Annotations["id"],
-		Subject:   sec.Annotations[dataSubject],
-		Name:      sec.Annotations[dataName],
-		TokenHash: string(sec.Data[dataTokenHash]),
+		ID:        cm.Data["id"],
+		Subject:   cm.Data[dataSubject],
+		Name:      cm.Data[dataName],
 		CreatedAt: created,
+		ExpiresAt: expires,
 	}
-	if raw, ok := sec.Annotations[dataExpiresAt]; ok {
-		exp, err := time.Parse(time.RFC3339, raw)
-		if err != nil {
-			return model.PAT{}, fmt.Errorf("parsing expires-at: %w", err)
-		}
-		p.ExpiresAt = &exp
-	}
-	if raw, ok := sec.Annotations[dataScope]; ok {
+	if raw, ok := cm.Data[dataScope]; ok {
 		var scope model.TokenScope
 		if err := json.Unmarshal([]byte(raw), &scope); err != nil {
 			return model.PAT{}, fmt.Errorf("parsing scope: %w", err)
@@ -69,11 +64,11 @@ func patFromSecret(sec *corev1.Secret) (model.PAT, error) {
 }
 
 func (s *Store) CreatePAT(ctx context.Context, p model.PAT) error {
-	sec, err := patToSecret(p, s.namespace)
+	cm, err := patToConfigMap(p, s.namespace)
 	if err != nil {
 		return err
 	}
-	if _, err := s.client.CoreV1().Secrets(s.namespace).Create(ctx, sec, metaCreateOpts()); err != nil {
+	if _, err := s.client.CoreV1().ConfigMaps(s.namespace).Create(ctx, cm, metaCreateOpts()); err != nil {
 		if isAlreadyExists(err) {
 			return fmt.Errorf("%w: PAT %q", model.ErrConflict, p.ID)
 		}
@@ -82,7 +77,6 @@ func (s *Store) CreatePAT(ctx context.Context, p model.PAT) error {
 
 	s.mu.Lock()
 	s.pats[p.ID] = p
-	s.patsByHash[p.TokenHash] = p.ID
 	s.mu.Unlock()
 	return nil
 }
@@ -95,16 +89,6 @@ func (s *Store) GetPAT(_ context.Context, id string) (model.PAT, error) {
 		return model.PAT{}, fmt.Errorf("%w: PAT %q", model.ErrNotFound, id)
 	}
 	return p, nil
-}
-
-func (s *Store) GetPATByHash(_ context.Context, tokenHash string) (model.PAT, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	id, ok := s.patsByHash[tokenHash]
-	if !ok {
-		return model.PAT{}, fmt.Errorf("%w: PAT", model.ErrNotFound)
-	}
-	return s.pats[id], nil
 }
 
 func (s *Store) ListPATsBySubject(_ context.Context, subject string) ([]model.PAT, error) {
@@ -121,14 +105,11 @@ func (s *Store) ListPATsBySubject(_ context.Context, subject string) ([]model.PA
 
 func (s *Store) DeletePAT(ctx context.Context, id string) error {
 	name := patName(id)
-	if err := s.client.CoreV1().Secrets(s.namespace).Delete(ctx, name, metaDeleteOpts()); err != nil && !isNotFound(err) {
+	if err := s.client.CoreV1().ConfigMaps(s.namespace).Delete(ctx, name, metaDeleteOpts()); err != nil && !isNotFound(err) {
 		return fmt.Errorf("deleting PAT %q: %w", id, err)
 	}
 
 	s.mu.Lock()
-	if p, ok := s.pats[id]; ok {
-		delete(s.patsByHash, p.TokenHash)
-	}
 	delete(s.pats, id)
 	s.mu.Unlock()
 	return nil

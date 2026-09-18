@@ -9,10 +9,13 @@ the full ask, and `doc/adr/` for the architecture decisions behind this
 implementation.
 
 It manages **Users**, **Tenants**, and **Grants** (which tenants a user may
-claim), and lets a user create/revoke **Personal Access Tokens (PATs)**,
-which exchange for short-lived JWTs. Only admins manage Tenants/Users/
-Grants; any user manages their own PATs. Full IdP/SSO is out of scope — see
-issue #2 for the follow-on OIDC discovery/JWKS/`/userinfo` work.
+claim), and lets a user create/revoke **Personal Access Tokens (PATs)** —
+which *are* signed JWTs, not a separate credential exchanged for one (see
+ADR 0012). Only admins manage Tenants/Users/Grants; any user manages their
+own PATs. Full IdP/SSO is out of scope — see issue #2 for the follow-on
+OIDC discovery/JWKS/`/userinfo` work, which is also what will eventually
+let `ecp` check whether a given PAT has been revoked (see ADR 0012's
+accepted revocation-gap trade-off).
 
 ## Configuration
 
@@ -24,7 +27,6 @@ All configuration is via environment variables (`internal/config`):
 | `IAM_NAMESPACE`            | `iam-system`   | Kubernetes namespace IAM stores state in  |
 | `IAM_JWT_ISSUER`           | *(required)*   | `iss` claim on issued JWTs                |
 | `IAM_JWT_AUDIENCE`         | *(empty)*      | `aud` claim, omitted if unset             |
-| `IAM_ACCESS_TOKEN_TTL`     | `15m`          | issued JWT lifetime                       |
 | `KUBECONFIG`               | *(empty)*      | path to a kubeconfig; empty = in-cluster  |
 | `IAM_LOG_LEVEL`            | `info`         |                                            |
 
@@ -64,19 +66,17 @@ curl -s -X POST localhost:8080/api/v1/users/alice@example.com/grants \
   -H "Authorization: Bearer $ADMIN_PAT" \
   -d '{"tenantId":"tenant-1"}'
 
-# Create a PAT for that user (self-service; here done with the admin PAT on their behalf)
+# Create a PAT for that user (self-service; here done with the admin PAT on their behalf).
+# The "secret" returned is a signed JWT and IS the bearer credential — use
+# it directly, there is no separate exchange step (ADR 0012).
 curl -s -X POST localhost:8080/api/v1/users/alice@example.com/pats \
   -H "Authorization: Bearer $ADMIN_PAT" \
   -d '{"name":"laptop"}'
-# => {"id":"...","subject":"alice@example.com",...,"secret":"iampat_..."}
-
-# Exchange that PAT for a JWT
-curl -s -X POST localhost:8080/api/v1/tokens -d '{"pat":"iampat_..."}'
-# => {"access_token":"...","token_type":"Bearer","expires_in":900}
+# => {"id":"...","subject":"alice@example.com",...,"secret":"eyJhbGci..."}
 ```
 
-Decode the `access_token` to see the claims shape the ecp gateway expects
-(`sub`, `iss`, `aud`, `exp`, `tenants`, optional `scope`).
+Decode the `secret` (a standard JWT) to see the claims shape the ecp
+gateway expects (`sub`, `iss`, `aud`, `exp`, `tenants`, optional `scope`).
 
 A minimal web UI is also available at `/web/login` (paste a PAT to sign in).
 

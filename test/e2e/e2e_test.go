@@ -53,7 +53,10 @@ func TestEndToEnd(t *testing.T) {
 	adminPAT := waitForBootstrapPAT(t, stdout)
 	waitForListening(t)
 
-	// --- Core flow: tenant -> user -> grant -> self-service PAT -> JWT ---
+	// --- Core flow: tenant -> user -> grant -> self-service PAT ---
+	// Per ADR 0012 the PAT itself is the signed JWT; there is no exchange
+	// step. createPAT's returned secret is used directly as the bearer
+	// credential everywhere below.
 
 	createTenant(t, adminPAT, "tenant-1", "Tenant One")
 	createUser(t, adminPAT, "alice@example.com", "Alice", false)
@@ -61,8 +64,7 @@ func TestEndToEnd(t *testing.T) {
 
 	aliceID, alicePAT := createPAT(t, adminPAT, "alice@example.com", "laptop")
 
-	issued := exchangeToken(t, alicePAT)
-	claims := decodeJWTClaims(t, issued.AccessToken)
+	claims := decodeJWTClaims(t, alicePAT)
 	require.Equal(t, "alice@example.com", claims["sub"])
 	require.Equal(t, []any{"tenant-1"}, claims["tenants"])
 	require.Contains(t, claims, "iss")
@@ -74,10 +76,13 @@ func TestEndToEnd(t *testing.T) {
 	assertStatus(t, http.StatusForbidden, doJSON(t, http.MethodGet, "/api/v1/users/admin/pats", alicePAT, nil))
 
 	// --- Revocation ---
+	// The signed JWT is still validly signed and unexpired, but IAM's own
+	// API must now reject it because its jti is no longer known (ADR
+	// 0012's revocation gap only applies to *other* verifiers, like ecp).
 
 	assertStatus(t, http.StatusNoContent, doJSON(t, http.MethodDelete, "/api/v1/users/alice@example.com/pats/"+aliceID, alicePAT, nil))
-	resp := doJSON(t, http.MethodPost, "/api/v1/tokens", "", map[string]string{"pat": alicePAT})
-	assertStatus(t, http.StatusForbidden, resp)
+	resp := doJSON(t, http.MethodGet, "/api/v1/users/alice@example.com/pats", alicePAT, nil)
+	assertStatus(t, http.StatusUnauthorized, resp)
 
 	// --- Restart: ADR 0009's load-at-startup cache must reflect prior state ---
 
@@ -314,23 +319,6 @@ func createPAT(t *testing.T, callerPAT, subject, name string) (id, secret string
 	require.NotEmpty(t, created.ID)
 	require.NotEmpty(t, created.Secret)
 	return created.ID, created.Secret
-}
-
-type issuedToken struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int64  `json:"expires_in"`
-}
-
-func exchangeToken(t *testing.T, pat string) issuedToken {
-	t.Helper()
-	resp := doJSON(t, http.MethodPost, "/api/v1/tokens", "", map[string]string{"pat": pat})
-	assertStatus(t, http.StatusOK, resp)
-	var out issuedToken
-	decodeBody(t, resp, &out)
-	require.Equal(t, "Bearer", out.TokenType)
-	require.NotEmpty(t, out.AccessToken)
-	return out
 }
 
 func listTenants(t *testing.T, adminPAT string) []map[string]any {

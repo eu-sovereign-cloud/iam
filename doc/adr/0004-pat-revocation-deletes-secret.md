@@ -2,7 +2,13 @@
 
 ## Status
 
-Accepted
+Accepted, but superseded in part by ADR 0012: PATs are now ConfigMaps, not
+Secrets (they carry no secret material once there's no token hash to
+protect), and there is no more `IAM_ACCESS_TOKEN_TTL`/exchange-time TTL —
+revoke-by-delete and the "not found == revoked" logic described below
+still stand exactly as written, just against the PAT's own metadata record
+directly rather than via a separate short-lived exchanged JWT. See ADR
+0012 for the fuller, now-current revocation-gap discussion.
 
 ## Context
 

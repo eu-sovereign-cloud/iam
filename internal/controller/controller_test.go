@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
@@ -28,7 +27,6 @@ var jwtParser = jwt.NewParser()
 type testStack struct {
 	ctl       *controller.Controller
 	adminPAT  string
-	tokenSvc  *service.TokenService
 	patSvc    *service.PATService
 	userSvc   *service.UserService
 	tenantSvc *service.TenantService
@@ -45,15 +43,13 @@ func newTestStack(t *testing.T) *testStack {
 
 	signer, err := adapter.LoadOrCreateSigner(ctx, client, "iam-system")
 	require.NoError(t, err)
-	tokens := adapter.NewTokenGenerator()
 
 	clock := service.SystemClock{}
 	userSvc := service.NewUserService(store, clock)
 	tenantSvc := service.NewTenantService(store, clock)
 	grantSvc := service.NewGrantService(store, store, store, clock)
-	patSvc := service.NewPATService(store, tokens, clock)
+	patSvc := service.NewPATService(store, store, signer, clock, "https://iam.example.com", "ecp-gateway")
 	authSvc := service.NewAuthService(patSvc, store)
-	tokenSvc := service.NewTokenService(patSvc, store, store, signer, clock, "https://iam.example.com", "ecp-gateway", 15*time.Minute)
 
 	admin, err := userSvc.Create(ctx, "admin@example.com", "Admin", true)
 	require.NoError(t, err)
@@ -62,9 +58,9 @@ func newTestStack(t *testing.T) *testStack {
 
 	return &testStack{
 		ctl: &controller.Controller{
-			Auth: authSvc, Users: userSvc, Tenants: tenantSvc, Grants: grantSvc, PATs: patSvc, Tokens: tokenSvc,
+			Auth: authSvc, Users: userSvc, Tenants: tenantSvc, Grants: grantSvc, PATs: patSvc,
 		},
-		adminPAT: adminPAT, tokenSvc: tokenSvc, patSvc: patSvc, userSvc: userSvc, tenantSvc: tenantSvc, grantSvc: grantSvc,
+		adminPAT: adminPAT, patSvc: patSvc, userSvc: userSvc, tenantSvc: tenantSvc, grantSvc: grantSvc,
 	}
 }
 
@@ -83,7 +79,7 @@ func doJSON(t *testing.T, mux http.Handler, method, path, bearer string, body an
 	return rec
 }
 
-func TestEndToEnd_CreateUserGrantExchangeRevoke(t *testing.T) {
+func TestEndToEnd_CreateUserGrantIssuePATRevoke(t *testing.T) {
 	stack := newTestStack(t)
 	mux := stack.ctl.Router()
 
@@ -104,7 +100,8 @@ func TestEndToEnd_CreateUserGrantExchangeRevoke(t *testing.T) {
 	rec = doJSON(t, mux, http.MethodPost, "/api/v1/users/bob@example.com/grants", stack.adminPAT, map[string]string{"tenantId": "tenant-1"})
 	require.Equal(t, http.StatusCreated, rec.Code)
 
-	// Bob (self-service) creates his own PAT.
+	// Bob (self-service) issues himself a new PAT. Per ADR 0012 the PAT
+	// itself is the signed JWT — there is no separate exchange step.
 	rec = doJSON(t, mux, http.MethodPost, "/api/v1/users/bob@example.com/pats", bobPAT, map[string]any{"name": "laptop"})
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var created struct {
@@ -114,32 +111,27 @@ func TestEndToEnd_CreateUserGrantExchangeRevoke(t *testing.T) {
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&created))
 	require.NotEmpty(t, created.Secret)
 
-	// Exchange the new PAT for a JWT carrying the granted tenant.
-	rec = doJSON(t, mux, http.MethodPost, "/api/v1/tokens", "", map[string]string{"pat": created.Secret})
-	require.Equal(t, http.StatusOK, rec.Code)
-	var issued struct {
-		AccessToken string `json:"access_token"`
-		TokenType   string `json:"token_type"`
-	}
-	require.NoError(t, json.NewDecoder(rec.Body).Decode(&issued))
-	require.Equal(t, "Bearer", issued.TokenType)
-	require.NotEmpty(t, issued.AccessToken)
-
-	claims, err := parseUnverified(issued.AccessToken)
+	claims, err := parseUnverified(created.Secret)
 	require.NoError(t, err)
 	require.Equal(t, "bob@example.com", claims.Subject)
 	require.Equal(t, []string{"tenant-1"}, claims.Tenants)
+
+	// The newly issued PAT authenticates directly against IAM's own API.
+	rec = doJSON(t, mux, http.MethodGet, "/api/v1/users/bob@example.com/pats", created.Secret, nil)
+	require.Equal(t, http.StatusOK, rec.Code)
 
 	// Bob cannot manage another subject's PATs.
 	rec = doJSON(t, mux, http.MethodGet, "/api/v1/users/admin@example.com/pats", bobPAT, nil)
 	require.Equal(t, http.StatusForbidden, rec.Code)
 
-	// Revoke bob's PAT; the exchange must now fail.
+	// Revoke the new PAT; the same signed JWT must now be rejected by IAM
+	// itself, even though its signature and expiry are still technically
+	// valid (ADR 0012's revocation gap is scoped to *other* verifiers).
 	rec = doJSON(t, mux, http.MethodDelete, "/api/v1/users/bob@example.com/pats/"+created.ID, bobPAT, nil)
 	require.Equal(t, http.StatusNoContent, rec.Code)
 
-	rec = doJSON(t, mux, http.MethodPost, "/api/v1/tokens", "", map[string]string{"pat": created.Secret})
-	require.Equal(t, http.StatusForbidden, rec.Code)
+	rec = doJSON(t, mux, http.MethodGet, "/api/v1/users/bob@example.com/pats", created.Secret, nil)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
 func parseUnverified(token string) (*model.Claims, error) {

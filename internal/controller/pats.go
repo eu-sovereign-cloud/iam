@@ -19,7 +19,7 @@ type patResponse struct {
 	Name      string            `json:"name"`
 	Scope     *model.TokenScope `json:"scope,omitempty"`
 	CreatedAt string            `json:"createdAt"`
-	ExpiresAt *string           `json:"expiresAt,omitempty"`
+	ExpiresAt string            `json:"expiresAt"`
 }
 
 type createPATResponse struct {
@@ -83,16 +83,12 @@ func (c *Controller) handleDeletePAT(w http.ResponseWriter, r *http.Request) {
 }
 
 func patToResponse(p model.PAT) patResponse {
-	resp := patResponse{
+	return patResponse{
 		ID:        p.ID,
 		Subject:   p.Subject,
 		Name:      p.Name,
 		Scope:     p.Scope,
 		CreatedAt: p.CreatedAt.Format(timeFormat),
+		ExpiresAt: p.ExpiresAt.Format(timeFormat),
 	}
-	if p.ExpiresAt != nil {
-		formatted := p.ExpiresAt.Format(timeFormat)
-		resp.ExpiresAt = &formatted
-	}
-	return resp
 }

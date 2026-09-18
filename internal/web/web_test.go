@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
@@ -25,13 +24,14 @@ func TestWebRoutesRenderWithoutError(t *testing.T) {
 	userSvc := service.NewUserService(store, clock)
 	tenantSvc := service.NewTenantService(store, clock)
 	grantSvc := service.NewGrantService(store, store, store, clock)
-	tokens := adapter.NewTokenGenerator()
-	patSvc := service.NewPATService(store, tokens, clock)
+	signer, err := adapter.LoadOrCreateSigner(ctx, client, "iam-system")
+	require.NoError(t, err)
+	patSvc := service.NewPATService(store, store, signer, clock, "https://iam.example.com", "ecp-gateway")
 	authSvc := service.NewAuthService(patSvc, store)
 
 	admin, err := userSvc.Create(ctx, "admin@example.com", "Admin", true)
 	require.NoError(t, err)
-	_, adminPAT, err := patSvc.Create(ctx, admin.Subject, "bootstrap", nil, time.Hour)
+	_, adminPAT, err := patSvc.Create(ctx, admin.Subject, "bootstrap", nil, 0)
 	require.NoError(t, err)
 
 	wb, err := web.New(authSvc, userSvc, tenantSvc, grantSvc, patSvc)
@@ -42,7 +42,7 @@ func TestWebRoutesRenderWithoutError(t *testing.T) {
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/web/login", nil))
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.Contains(t, rec.Body.String(), "Log in")
+	require.Contains(t, rec.Body.String(), "Continue")
 
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/web/pats", nil))
@@ -51,7 +51,7 @@ func TestWebRoutesRenderWithoutError(t *testing.T) {
 	// Authenticated (cookie-based) pages render.
 	rec = doAuthed(mux, http.MethodGet, "/web/pats", adminPAT)
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.Contains(t, rec.Body.String(), "My Personal Access Tokens")
+	require.Contains(t, rec.Body.String(), "Your access tokens")
 
 	rec = doAuthed(mux, http.MethodGet, "/web/tenants", adminPAT)
 	require.Equal(t, http.StatusOK, rec.Code)

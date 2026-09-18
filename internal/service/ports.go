@@ -37,20 +37,14 @@ type GrantStore interface {
 type PATStore interface {
 	CreatePAT(ctx context.Context, p model.PAT) error
 	GetPAT(ctx context.Context, id string) (model.PAT, error)
-	GetPATByHash(ctx context.Context, tokenHash string) (model.PAT, error)
 	ListPATsBySubject(ctx context.Context, subject string) ([]model.PAT, error)
 	DeletePAT(ctx context.Context, id string) error
 }
 
-// Signer mints a signed JWT from a set of claims.
+// Signer mints and verifies the signed JWTs that PATs are (ADR 0012).
 type Signer interface {
 	Sign(claims model.Claims) (string, error)
-}
-
-// TokenGenerator produces a new random PAT secret and its stable hash.
-type TokenGenerator interface {
-	NewToken() (raw string, hash string)
-	Hash(raw string) string
+	Verify(token string) (model.Claims, error)
 }
 
 // Clock is injected so services are deterministic in tests.

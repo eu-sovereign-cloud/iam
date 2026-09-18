@@ -116,6 +116,27 @@ func (s *Signer) Sign(claims model.Claims) (string, error) {
 	return signed, nil
 }
 
+// Verify parses and validates a JWT signed by this Signer (or an earlier
+// key it loaded), checking the signature and the mandatory expiry —
+// mirroring ecp's own gateway verification style
+// (ecp/gateway/internal/authn/jwtstd.go). Since a PAT *is* the JWT (ADR
+// 0012), this is what IAM uses to authenticate its own incoming bearer
+// tokens; it does not check issuer/audience, since only this Signer's own
+// key could have produced a validly-signed token in the first place.
+func (s *Signer) Verify(tokenString string) (model.Claims, error) {
+	claims := &model.Claims{}
+	_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
+			return nil, fmt.Errorf("unexpected signing method %q", token.Method.Alg())
+		}
+		return &s.privateKey.PublicKey, nil
+	}, jwt.WithValidMethods([]string{signingMethod}), jwt.WithExpirationRequired())
+	if err != nil {
+		return model.Claims{}, fmt.Errorf("invalid token: %w", err)
+	}
+	return *claims, nil
+}
+
 func newKeyID() string {
 	buf := make([]byte, 8)
 	_, _ = rand.Read(buf)

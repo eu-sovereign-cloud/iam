@@ -51,25 +51,23 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	tokens := adapter.NewTokenGenerator()
-
-	if rawPAT, created, err := adapter.EnsureBootstrapAdmin(ctx, store, tokens, time.Now()); err != nil {
-		return err
-	} else if created {
-		slog.Warn("created bootstrap admin PAT - copy it now, it will not be shown again",
-			"subject", adapter.BootstrapAdminSubject, "pat", rawPAT)
-	}
 
 	clock := service.SystemClock{}
 	userSvc := service.NewUserService(store, clock)
 	tenantSvc := service.NewTenantService(store, clock)
 	grantSvc := service.NewGrantService(store, store, store, clock)
-	patSvc := service.NewPATService(store, tokens, clock)
+	patSvc := service.NewPATService(store, store, signer, clock, cfg.JWTIssuer, cfg.JWTAudience)
 	authSvc := service.NewAuthService(patSvc, store)
-	tokenSvc := service.NewTokenService(patSvc, store, store, signer, clock, cfg.JWTIssuer, cfg.JWTAudience, cfg.AccessTokenTTL)
+
+	if rawPAT, created, err := service.EnsureBootstrapAdmin(ctx, userSvc, patSvc); err != nil {
+		return err
+	} else if created {
+		slog.Warn("created bootstrap admin PAT - copy it now, it will not be shown again",
+			"subject", service.BootstrapAdminSubject, "pat", rawPAT)
+	}
 
 	ctl := &controller.Controller{
-		Auth: authSvc, Users: userSvc, Tenants: tenantSvc, Grants: grantSvc, PATs: patSvc, Tokens: tokenSvc,
+		Auth: authSvc, Users: userSvc, Tenants: tenantSvc, Grants: grantSvc, PATs: patSvc,
 	}
 	webUI, err := web.New(authSvc, userSvc, tenantSvc, grantSvc, patSvc)
 	if err != nil {

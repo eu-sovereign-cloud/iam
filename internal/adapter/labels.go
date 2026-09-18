@@ -25,7 +25,6 @@ const (
 	dataGrantedAt = "granted-at"
 	dataGrantedBy = "granted-by"
 
-	dataTokenHash = "token-hash"
 	dataName      = "name"
 	dataScope     = "scope"
 	dataExpiresAt = "expires-at"

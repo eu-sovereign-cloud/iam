@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted
+Accepted. The claims shape itself (this ADR) still stands, but **the
+"resolved fresh at exchange time" part of the Decision and Consequences
+below is superseded by ADR 0012**: there is no more exchange step, and
+`tenants` is now resolved once, at PAT-issuance time.
 
 ## Context
 

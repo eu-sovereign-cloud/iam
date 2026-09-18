@@ -18,11 +18,11 @@ and no external effects to reconcile.
 ## Decision
 
 IAM stores everything as native Kubernetes ConfigMaps (non-sensitive
-metadata: Users, Tenants, Grants) and Secrets (PAT hashes, the JWT signing
-key) in a single namespace, using the core `client-go` typed clientset
-directly. No CRDs, no controller-runtime, no external database. See the
-design plan's "Data model & Kubernetes storage" section for the exact
-resource shapes.
+metadata: Users, Tenants, Grants, and — per ADR 0012 — PATs, which carry no
+secret material of their own) and Secrets (only the JWT signing key) in a
+single namespace, using the core `client-go` typed clientset directly. No
+CRDs, no controller-runtime, no external database. See the design plan's
+"Data model & Kubernetes storage" section for the exact resource shapes.
 
 ## Consequences
 

@@ -90,10 +90,10 @@ func TestPATCRUD(t *testing.T) {
 
 	exp := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
 	p := model.PAT{
-		ID: "pat-1", Subject: "alice@example.com", Name: "laptop", TokenHash: "abc123",
+		ID: "pat-1", Subject: "alice@example.com", Name: "laptop",
 		Scope:     &model.TokenScope{Tenants: []string{"tenant-1"}},
 		CreatedAt: time.Now().UTC().Truncate(time.Second),
-		ExpiresAt: &exp,
+		ExpiresAt: exp,
 	}
 	require.NoError(t, store.CreatePAT(ctx, p))
 
@@ -101,18 +101,12 @@ func TestPATCRUD(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, p, got)
 
-	byHash, err := store.GetPATByHash(ctx, p.TokenHash)
-	require.NoError(t, err)
-	require.Equal(t, p, byHash)
-
 	list, err := store.ListPATsBySubject(ctx, p.Subject)
 	require.NoError(t, err)
 	require.Len(t, list, 1)
 
 	require.NoError(t, store.DeletePAT(ctx, p.ID))
 	_, err = store.GetPAT(ctx, p.ID)
-	require.ErrorIs(t, err, model.ErrNotFound)
-	_, err = store.GetPATByHash(ctx, p.TokenHash)
 	require.ErrorIs(t, err, model.ErrNotFound)
 }
 

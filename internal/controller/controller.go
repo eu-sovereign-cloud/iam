@@ -16,15 +16,12 @@ type Controller struct {
 	Tenants *service.TenantService
 	Grants  *service.GrantService
 	PATs    *service.PATService
-	Tokens  *service.TokenService
 }
 
 // Router builds the full REST API mux (see the design plan's API surface
 // section for the route list).
 func (c *Controller) Router() *http.ServeMux {
 	mux := http.NewServeMux()
-
-	mux.HandleFunc("POST /api/v1/tokens", c.handleExchangeToken)
 
 	mux.HandleFunc("POST /api/v1/tenants", c.RequireAdmin(c.handleCreateTenant))
 	mux.HandleFunc("GET /api/v1/tenants", c.RequireAdmin(c.handleListTenants))

@@ -2,21 +2,21 @@ package model
 
 import "time"
 
-// PAT is a Personal Access Token: the credential end users/tools exchange
-// for a short-lived JWT (see TokenService). Only its hash is ever
-// persisted; the raw secret is returned once, at creation time.
+// PAT is a Personal Access Token: a signed JWT (see Claims) issued
+// directly to a user as their bearer credential — there is no separate
+// exchange step (ADR 0012). IAM never persists the raw JWT, only metadata
+// about it (enough to list it and to check its jti hasn't been revoked);
+// the signed string itself is only ever shown once, at creation time.
 type PAT struct {
-	ID        string
+	ID        string // the JWT's jti
 	Subject   string
 	Name      string
-	TokenHash string
 	Scope     *TokenScope
 	CreatedAt time.Time
-	ExpiresAt *time.Time
+	ExpiresAt time.Time // always set: a JWT's exp is mandatory (ADR 0012)
 }
 
-// Expired reports whether the PAT itself (not any JWT minted from it) has
-// passed its optional expiry.
+// Expired reports whether the PAT has passed its expiry.
 func (p PAT) Expired(now time.Time) bool {
-	return p.ExpiresAt != nil && now.After(*p.ExpiresAt)
+	return now.After(p.ExpiresAt)
 }

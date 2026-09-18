@@ -1,6 +1,6 @@
 // Package adapter implements the driven adapters IAM's services depend on:
-// a Kubernetes ConfigMap/Secret-backed store (ADR 0001, ADR 0009), an ES256
-// JWT signer, and PAT token generation/hashing.
+// a Kubernetes ConfigMap/Secret-backed store (ADR 0001, ADR 0009) and an
+// ES256 JWT signer/verifier (ADR 0005, ADR 0012).
 package adapter
 
 import (
@@ -23,23 +23,21 @@ type Store struct {
 	client    kubernetes.Interface
 	namespace string
 
-	mu         sync.RWMutex
-	users      map[string]model.User   // key: subject
-	tenants    map[string]model.Tenant // key: tenantID
-	grants     map[string]model.Grant  // key: subject + "|" + tenantID
-	pats       map[string]model.PAT    // key: id
-	patsByHash map[string]string       // key: tokenHash -> id
+	mu      sync.RWMutex
+	users   map[string]model.User   // key: subject
+	tenants map[string]model.Tenant // key: tenantID
+	grants  map[string]model.Grant  // key: subject + "|" + tenantID
+	pats    map[string]model.PAT    // key: id (the PAT JWT's jti)
 }
 
 func NewStore(client kubernetes.Interface, namespace string) *Store {
 	return &Store{
-		client:     client,
-		namespace:  namespace,
-		users:      map[string]model.User{},
-		tenants:    map[string]model.Tenant{},
-		grants:     map[string]model.Grant{},
-		pats:       map[string]model.PAT{},
-		patsByHash: map[string]string{},
+		client:    client,
+		namespace: namespace,
+		users:     map[string]model.User{},
+		tenants:   map[string]model.Tenant{},
+		grants:    map[string]model.Grant{},
+		pats:      map[string]model.PAT{},
 	}
 }
 
@@ -69,23 +67,13 @@ func (s *Store) Load(ctx context.Context) error {
 		case typeGrant:
 			g := grantFromConfigMap(&cm)
 			s.grants[grantKey(g.Subject, g.TenantID)] = g
+		case typePAT:
+			p, err := patFromConfigMap(&cm)
+			if err != nil {
+				return fmt.Errorf("decoding PAT configmap %s: %w", cm.Name, err)
+			}
+			s.pats[p.ID] = p
 		}
-	}
-
-	secrets, err := s.client.CoreV1().Secrets(s.namespace).List(ctx, metaListOpts(labelType))
-	if err != nil {
-		return fmt.Errorf("listing secrets: %w", err)
-	}
-	for _, sec := range secrets.Items {
-		if sec.Labels[labelType] != typePAT {
-			continue
-		}
-		p, err := patFromSecret(&sec)
-		if err != nil {
-			return fmt.Errorf("decoding PAT secret %s: %w", sec.Name, err)
-		}
-		s.pats[p.ID] = p
-		s.patsByHash[p.TokenHash] = p.ID
 	}
 	return nil
 }

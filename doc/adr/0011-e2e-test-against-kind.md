@@ -7,8 +7,9 @@ Accepted
 ## Context
 
 `internal/controller/controller_test.go` already exercises the full HTTP
-flow (create tenant → grant → self-service PAT → exchange → revoke) against
-a fake Kubernetes clientset (`k8s.io/client-go/kubernetes/fake`). That's a
+flow (create tenant → grant → self-service PAT issuance → revoke; see ADR
+0012 — a PAT is the JWT directly, there is no separate exchange step)
+against a fake Kubernetes clientset (`k8s.io/client-go/kubernetes/fake`). That's a
 fast, hermetic test of IAM's own business logic, but it can't catch bugs in
 how IAM talks to a *real* API server — which is exactly how a real bug was
 found: `adapter.BuildClientset`'s out-of-cluster kubeconfig fallback was
