@@ -58,6 +58,7 @@ func newTestStack(t *testing.T) *testStack {
 	createGrant := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock}
 	listUserGrants := &controller.ListUserGrants{Grants: store}
 	deleteGrant := &controller.DeleteGrant{Grants: store}
+	setGrantAdmin := &controller.SetGrantAdmin{Grants: store}
 
 	createPAT := &controller.CreatePAT{PATs: store, Grants: store, Signer: signer, Clock: clock, Issuer: "https://iam.example.com", Audience: []string{"ecp-gateway"}}
 	listUserPATs := &controller.ListUserPATs{PATs: store}
@@ -79,7 +80,7 @@ func newTestStack(t *testing.T) *testStack {
 			AuthenticateUser: authenticateUser,
 			CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant,
 			CreateUser: createUser, ListUsers: listUsers, SetUserAdmin: setUserAdmin, DeleteUser: deleteUser,
-			CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant,
+			CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant, SetGrantAdmin: setGrantAdmin,
 			CreatePAT: createPAT, ListUserPATs: listUserPATs, RevokePAT: revokePAT,
 		},
 		adminPAT:   adminPAT,
@@ -124,6 +125,28 @@ func TestEndToEnd_CreateUserGrantIssuePATRevoke(t *testing.T) {
 	// Admin grants bob access to it.
 	rec = doJSON(t, mux, http.MethodPost, "/api/v1/users/bob@example.com/grants", stack.adminPAT, map[string]string{"tenantId": "tenant-1"})
 	require.Equal(t, http.StatusCreated, rec.Code)
+
+	// Bob is not a tenant admin: he cannot grant a third subject access.
+	_, err = stack.createUser.Do(seedCtx, "carol@example.com", "Carol", false)
+	require.NoError(t, err)
+	rec = doJSON(t, mux, http.MethodPost, "/api/v1/users/carol@example.com/grants", bobPAT, map[string]string{"tenantId": "tenant-1"})
+	require.Equal(t, http.StatusForbidden, rec.Code)
+
+	// Admin promotes bob to tenant admin of tenant-1.
+	rec = doJSON(t, mux, http.MethodPatch, "/api/v1/users/bob@example.com/grants/tenant-1", stack.adminPAT, map[string]any{"admin": true})
+	require.Equal(t, http.StatusOK, rec.Code)
+	var patched struct {
+		Admin bool `json:"admin"`
+	}
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&patched))
+	require.True(t, patched.Admin)
+
+	// Bob, now a tenant admin of tenant-1, may grant carol access to it —
+	// but still holds no privilege to promote her to tenant admin himself.
+	rec = doJSON(t, mux, http.MethodPost, "/api/v1/users/carol@example.com/grants", bobPAT, map[string]string{"tenantId": "tenant-1"})
+	require.Equal(t, http.StatusCreated, rec.Code)
+	rec = doJSON(t, mux, http.MethodPatch, "/api/v1/users/carol@example.com/grants/tenant-1", bobPAT, map[string]any{"admin": true})
+	require.Equal(t, http.StatusForbidden, rec.Code)
 
 	// Bob (self-service) issues himself a new PAT. Per ADR 0012 the PAT
 	// itself is the signed JWT — there is no separate exchange step.

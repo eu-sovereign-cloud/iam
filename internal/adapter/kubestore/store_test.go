@@ -73,10 +73,23 @@ func TestGrantCRUD(t *testing.T) {
 	require.NoError(t, store.CreateGrant(ctx, g))
 	require.ErrorIs(t, store.CreateGrant(ctx, g), model.ErrConflict)
 
+	got, err := store.GetGrant(ctx, g.Subject, g.TenantID)
+	require.NoError(t, err)
+	require.Equal(t, g, got)
+
+	_, err = store.GetGrant(ctx, "unknown@example.com", g.TenantID)
+	require.ErrorIs(t, err, model.ErrNotFound)
+
 	list, err := store.ListGrantsBySubject(ctx, g.Subject)
 	require.NoError(t, err)
 	require.Len(t, list, 1)
 	require.Equal(t, g, list[0])
+
+	got.Admin = true
+	require.NoError(t, store.UpdateGrant(ctx, got))
+	got2, err := store.GetGrant(ctx, g.Subject, g.TenantID)
+	require.NoError(t, err)
+	require.True(t, got2.Admin)
 
 	require.NoError(t, store.DeleteGrant(ctx, g.Subject, g.TenantID))
 	list, err = store.ListGrantsBySubject(ctx, g.Subject)

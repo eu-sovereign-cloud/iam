@@ -141,6 +141,27 @@ func (f *fakeGrantStore) CreateGrant(_ context.Context, g model.Grant) error {
 	return nil
 }
 
+func (f *fakeGrantStore) GetGrant(_ context.Context, subject, tenantID string) (model.Grant, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	g, ok := f.grants[grantKey(subject, tenantID)]
+	if !ok {
+		return model.Grant{}, fmt.Errorf("%w: %s", model.ErrNotFound, grantKey(subject, tenantID))
+	}
+	return g, nil
+}
+
+func (f *fakeGrantStore) UpdateGrant(_ context.Context, g model.Grant) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	key := grantKey(g.Subject, g.TenantID)
+	if _, ok := f.grants[key]; !ok {
+		return fmt.Errorf("%w: %s", model.ErrNotFound, key)
+	}
+	f.grants[key] = g
+	return nil
+}
+
 func (f *fakeGrantStore) ListGrantsBySubject(_ context.Context, subject string) ([]model.Grant, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

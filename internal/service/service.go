@@ -27,6 +27,7 @@ type Service struct {
 	CreateGrant    *controller.CreateGrant
 	ListUserGrants *controller.ListUserGrants
 	DeleteGrant    *controller.DeleteGrant
+	SetGrantAdmin  *controller.SetGrantAdmin
 
 	CreatePAT    *controller.CreatePAT
 	ListUserPATs *controller.ListUserPATs
@@ -49,6 +50,7 @@ func (s *Service) Router() *http.ServeMux {
 
 	mux.HandleFunc("POST /api/v1/users/{subject}/grants", s.RequireAuth(s.handleCreateGrant))
 	mux.HandleFunc("GET /api/v1/users/{subject}/grants", s.RequireAuth(s.handleListGrants))
+	mux.HandleFunc("PATCH /api/v1/users/{subject}/grants/{tenantId}", s.RequireAuth(s.handlePatchGrant))
 	mux.HandleFunc("DELETE /api/v1/users/{subject}/grants/{tenantId}", s.RequireAuth(s.handleDeleteGrant))
 
 	mux.HandleFunc("POST /api/v1/users/{subject}/pats", s.RequireAuth(s.handleCreatePAT))

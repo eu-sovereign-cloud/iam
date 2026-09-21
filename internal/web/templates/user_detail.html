@@ -29,12 +29,25 @@
         {{if .Grants}}
         <table class="register">
           <thead>
-            <tr><th>Tenant</th><th></th></tr>
+            <tr><th>Tenant</th><th></th><th></th></tr>
           </thead>
           <tbody>
             {{range .Grants}}
             <tr>
-              <td><code>{{.TenantID}}</code></td>
+              <td><code>{{.TenantID}}</code>{{if .Admin}} <span class="chip">Tenant admin</span>{{end}}</td>
+              <td class="register-action">
+                {{if $.User.Admin}}
+                <form method="post" action="/web/users/{{.Subject}}/grants/{{.TenantID}}/admin">
+                  {{if .Admin}}
+                  <input type="hidden" name="admin" value="false">
+                  <button type="submit" class="link-button">Revoke tenant admin</button>
+                  {{else}}
+                  <input type="hidden" name="admin" value="true">
+                  <button type="submit" class="link-button">Make tenant admin</button>
+                  {{end}}
+                </form>
+                {{end}}
+              </td>
               <td class="register-action">
                 <form method="post" action="/web/users/{{.Subject}}/grants/{{.TenantID}}/revoke">
                   <button type="submit" class="link-button link-button-danger">Revoke</button>

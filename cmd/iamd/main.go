@@ -73,6 +73,7 @@ func run() error {
 	createGrant := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock}
 	listUserGrants := &controller.ListUserGrants{Grants: store}
 	deleteGrant := &controller.DeleteGrant{Grants: store}
+	setGrantAdmin := &controller.SetGrantAdmin{Grants: store}
 
 	createPAT := &controller.CreatePAT{PATs: store, Grants: store, Signer: signer, Clock: clock, Issuer: cfg.JWTIssuer, Audience: cfg.JWTAudience}
 	listUserPATs := &controller.ListUserPATs{PATs: store}
@@ -93,14 +94,14 @@ func run() error {
 		AuthenticateUser: authenticateUser,
 		CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant,
 		CreateUser: createUser, ListUsers: listUsers, SetUserAdmin: setUserAdmin, DeleteUser: deleteUser,
-		CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant,
+		CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant, SetGrantAdmin: setGrantAdmin,
 		CreatePAT: createPAT, ListUserPATs: listUserPATs, RevokePAT: revokePAT,
 	}
 	webUI, err := web.New(
 		authenticateUser,
 		createTenant, listTenants, deleteTenant,
 		createUser, getUser, listUsers, deleteUser,
-		createGrant, listUserGrants, deleteGrant,
+		createGrant, listUserGrants, deleteGrant, setGrantAdmin,
 		createPAT, listUserPATs, revokePAT,
 	)
 	if err != nil {

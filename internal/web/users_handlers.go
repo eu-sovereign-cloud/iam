@@ -9,6 +9,7 @@ import (
 type grantView struct {
 	Subject  string
 	TenantID string
+	Admin    bool
 }
 
 type userView struct {
@@ -76,7 +77,7 @@ func (wb *Web) renderUserDetailPage(w http.ResponseWriter, r *http.Request, subj
 	}
 	grantViews := make([]grantView, 0, len(grants))
 	for _, g := range grants {
-		grantViews = append(grantViews, grantView{Subject: g.Subject, TenantID: g.TenantID})
+		grantViews = append(grantViews, grantView{Subject: g.Subject, TenantID: g.TenantID, Admin: g.Admin})
 	}
 
 	tenants, err := wb.ListTenants.Do(r.Context())
@@ -168,6 +169,20 @@ func (wb *Web) handleUsersGrant(w http.ResponseWriter, r *http.Request) {
 func (wb *Web) handleUsersRevokeGrant(w http.ResponseWriter, r *http.Request) {
 	subject := r.PathValue("subject")
 	if err := wb.DeleteGrant.Do(r.Context(), subject, r.PathValue("tenantId")); err != nil {
+		wb.renderUserDetailPage(w, r, subject, "", err.Error())
+		return
+	}
+	http.Redirect(w, r, "/web/users/"+subject, http.StatusSeeOther)
+}
+
+func (wb *Web) handleUsersSetGrantAdmin(w http.ResponseWriter, r *http.Request) {
+	subject := r.PathValue("subject")
+	if err := r.ParseForm(); err != nil {
+		wb.renderUserDetailPage(w, r, subject, "", "That submission did not come through. Try again.")
+		return
+	}
+	admin := r.FormValue("admin") == "true"
+	if _, err := wb.SetGrantAdmin.Do(r.Context(), subject, r.PathValue("tenantId"), admin); err != nil {
 		wb.renderUserDetailPage(w, r, subject, "", err.Error())
 		return
 	}

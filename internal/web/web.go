@@ -38,6 +38,7 @@ type Web struct {
 	CreateGrant    *controller.CreateGrant
 	ListUserGrants *controller.ListUserGrants
 	DeleteGrant    *controller.DeleteGrant
+	SetGrantAdmin  *controller.SetGrantAdmin
 
 	CreatePAT    *controller.CreatePAT
 	ListUserPATs *controller.ListUserPATs
@@ -50,7 +51,7 @@ func New(
 	authenticateUser *controller.AuthenticateUser,
 	createTenant *controller.CreateTenant, listTenants *controller.ListTenants, deleteTenant *controller.DeleteTenant,
 	createUser *controller.CreateUser, getUser *controller.GetUser, listUsers *controller.ListUsers, deleteUser *controller.DeleteUser,
-	createGrant *controller.CreateGrant, listUserGrants *controller.ListUserGrants, deleteGrant *controller.DeleteGrant,
+	createGrant *controller.CreateGrant, listUserGrants *controller.ListUserGrants, deleteGrant *controller.DeleteGrant, setGrantAdmin *controller.SetGrantAdmin,
 	createPAT *controller.CreatePAT, listUserPATs *controller.ListUserPATs, revokePAT *controller.RevokePAT,
 ) (*Web, error) {
 	tmpl, err := template.ParseFS(templateFS, "templates/*.html")
@@ -61,7 +62,7 @@ func New(
 		AuthenticateUser: authenticateUser,
 		CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant,
 		CreateUser: createUser, GetUser: getUser, ListUsers: listUsers, DeleteUser: deleteUser,
-		CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant,
+		CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant, SetGrantAdmin: setGrantAdmin,
 		CreatePAT: createPAT, ListUserPATs: listUserPATs, RevokePAT: revokePAT,
 		tmpl: tmpl,
 	}, nil
@@ -98,6 +99,7 @@ func (wb *Web) Router() *http.ServeMux {
 	mux.HandleFunc("POST /web/users/{subject}/delete", wb.requireAuth(wb.handleUsersDelete))
 	mux.HandleFunc("POST /web/users/{subject}/grants", wb.requireAuth(wb.handleUsersGrant))
 	mux.HandleFunc("POST /web/users/{subject}/grants/{tenantId}/revoke", wb.requireAuth(wb.handleUsersRevokeGrant))
+	mux.HandleFunc("POST /web/users/{subject}/grants/{tenantId}/admin", wb.requireAuth(wb.handleUsersSetGrantAdmin))
 	mux.HandleFunc("POST /web/users/{subject}/pats", wb.requireAuth(wb.handleUserPATsCreate))
 	mux.HandleFunc("POST /web/users/{subject}/pats/{id}/revoke", wb.requireAuth(wb.handleUserPATsRevoke))
 

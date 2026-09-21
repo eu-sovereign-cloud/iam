@@ -12,4 +12,10 @@ type Grant struct {
 	TenantID  string
 	GrantedAt time.Time
 	GrantedBy string
+	// Admin marks Subject as a tenant admin for TenantID: they may grant
+	// or revoke other subjects' access to this one tenant, but hold no
+	// privilege over any other tenant and cannot themselves promote or
+	// demote tenant-admin status (only a global admin can, via
+	// SetGrantAdmin — see doc/adr/0016).
+	Admin bool
 }

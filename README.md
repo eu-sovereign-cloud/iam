@@ -11,8 +11,11 @@ implementation.
 It manages **Users**, **Tenants**, and **Grants** (which tenants a user may
 claim), and lets a user create/revoke **Personal Access Tokens (PATs)** —
 which *are* signed JWTs, not a separate credential exchanged for one (see
-ADR 0012). Only admins manage Tenants/Users/Grants; any user manages their
-own PATs. Full IdP/SSO is out of scope — see issue #2 for the follow-on
+ADR 0012). Only global admins manage Tenants/Users/Grants; any user manages
+their own PATs. A Grant can also mark its subject as a **tenant admin**
+(`PATCH /api/v1/users/{subject}/grants/{tenantId}`, global-admin-only),
+letting them manage grants for that one tenant without being a global
+admin (see ADR 0016). Full IdP/SSO is out of scope — see issue #2 for the follow-on
 OIDC discovery/JWKS/`/userinfo` work, which is also what will eventually
 let `ecp` check whether a given PAT has been revoked (see ADR 0012's
 accepted revocation-gap trade-off).

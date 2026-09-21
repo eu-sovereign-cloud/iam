@@ -4,6 +4,12 @@
 
 Accepted
 
+Note: `Admin` described below as a single global flag on `User` is no
+longer the only privilege IAM models — ADR 0016 adds a second, narrower
+one, `Grant.Admin`, scoping admin rights to one tenant. Everything below
+about the global `User.Admin` flag and the entities themselves still
+stands; ADR 0016 is additive.
+
 ## Context
 
 Issue #1 asks for a service that mints JWTs carrying a `tenants` claim (see

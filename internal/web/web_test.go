@@ -36,6 +36,7 @@ func TestWebRoutesRenderWithoutError(t *testing.T) {
 	createGrant := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock}
 	listUserGrants := &controller.ListUserGrants{Grants: store}
 	deleteGrant := &controller.DeleteGrant{Grants: store}
+	setGrantAdmin := &controller.SetGrantAdmin{Grants: store}
 
 	signer, err := kubecrypt.LoadOrCreate(ctx, client, "iam-system")
 	require.NoError(t, err)
@@ -58,7 +59,7 @@ func TestWebRoutesRenderWithoutError(t *testing.T) {
 		authenticateUser,
 		createTenant, listTenants, deleteTenant,
 		createUser, getUser, listUsers, deleteUser,
-		createGrant, listUserGrants, deleteGrant,
+		createGrant, listUserGrants, deleteGrant, setGrantAdmin,
 		createPAT, listUserPATs, revokePAT,
 	)
 	require.NoError(t, err)
