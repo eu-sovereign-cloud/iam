@@ -72,6 +72,8 @@ func (wb *Web) Router() *http.ServeMux {
 	mux.HandleFunc("POST /web/users/{subject}/delete", wb.requireAdmin(wb.handleUsersDelete))
 	mux.HandleFunc("POST /web/users/{subject}/grants", wb.requireAdmin(wb.handleUsersGrant))
 	mux.HandleFunc("POST /web/users/{subject}/grants/{tenantId}/revoke", wb.requireAdmin(wb.handleUsersRevokeGrant))
+	mux.HandleFunc("POST /web/users/{subject}/pats", wb.requireAdmin(wb.handleUserPATsCreate))
+	mux.HandleFunc("POST /web/users/{subject}/pats/{id}/revoke", wb.requireAdmin(wb.handleUserPATsRevoke))
 
 	mux.HandleFunc("GET /web/", wb.handleRoot)
 

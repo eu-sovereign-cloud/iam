@@ -45,20 +45,26 @@ func (wb *Web) renderPATsPage(w http.ResponseWriter, r *http.Request, newSecret,
 	})
 }
 
+// parseTTL reads the "ttl" form field shared by the self-service and
+// admin-on-behalf-of issue-token forms.
+func parseTTL(r *http.Request) (time.Duration, error) {
+	raw := r.FormValue("ttl")
+	if raw == "" {
+		return 0, nil
+	}
+	return time.ParseDuration(raw)
+}
+
 func (wb *Web) handlePATsCreate(w http.ResponseWriter, r *http.Request) {
 	user := identityFromContext(r.Context())
 	if err := r.ParseForm(); err != nil {
 		wb.renderPATsPage(w, r, "", "That submission did not come through. Try again.")
 		return
 	}
-	var ttl time.Duration
-	if raw := r.FormValue("ttl"); raw != "" {
-		parsed, err := time.ParseDuration(raw)
-		if err != nil {
-			wb.renderPATsPage(w, r, "", "Expiry must look like a duration, e.g. 720h.")
-			return
-		}
-		ttl = parsed
+	ttl, err := parseTTL(r)
+	if err != nil {
+		wb.renderPATsPage(w, r, "", "Expiry must look like a duration, e.g. 720h.")
+		return
 	}
 	_, raw, err := wb.PATs.Create(r.Context(), user.Subject, r.FormValue("name"), nil, ttl)
 	if err != nil {

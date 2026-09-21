@@ -53,10 +53,10 @@ func (wb *Web) handleUsersCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wb *Web) handleUserDetailPage(w http.ResponseWriter, r *http.Request) {
-	wb.renderUserDetailPage(w, r, r.PathValue("subject"), "")
+	wb.renderUserDetailPage(w, r, r.PathValue("subject"), "", "")
 }
 
-func (wb *Web) renderUserDetailPage(w http.ResponseWriter, r *http.Request, subject, errMsg string) {
+func (wb *Web) renderUserDetailPage(w http.ResponseWriter, r *http.Request, subject, newSecret, errMsg string) {
 	caller := identityFromContext(r.Context())
 
 	user, err := wb.Users.Get(r.Context(), subject)
@@ -85,23 +85,69 @@ func (wb *Web) renderUserDetailPage(w http.ResponseWriter, r *http.Request, subj
 		tenantViews = append(tenantViews, tenantView{TenantID: t.TenantID, DisplayName: t.DisplayName})
 	}
 
+	pats, err := wb.PATs.ListBySubject(r.Context(), subject)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	patViews := make([]patView, 0, len(pats))
+	for _, p := range pats {
+		patViews = append(patViews, patView{ID: p.ID, Name: p.Name, CreatedAt: p.CreatedAt.Format(timeFormat), ExpiresAt: formatExpiry(p.ExpiresAt)})
+	}
+
 	wb.render(w, "user_detail.html", map[string]any{
 		"User": caller,
 		"Subject": userView{
 			Subject: user.Subject, DisplayName: user.DisplayName, Admin: user.Admin,
 			CreatedAt: user.CreatedAt.Format(timeFormat),
 		},
-		"Grants":  grantViews,
-		"Tenants": tenantViews,
-		"Error":   errMsg,
-		"Active":  "users",
+		"Grants":    grantViews,
+		"Tenants":   tenantViews,
+		"PATs":      patViews,
+		"NewSecret": newSecret,
+		"Error":     errMsg,
+		"Active":    "users",
 	})
+}
+
+func (wb *Web) handleUserPATsCreate(w http.ResponseWriter, r *http.Request) {
+	subject := r.PathValue("subject")
+	if err := r.ParseForm(); err != nil {
+		wb.renderUserDetailPage(w, r, subject, "", "That submission did not come through. Try again.")
+		return
+	}
+	ttl, err := parseTTL(r)
+	if err != nil {
+		wb.renderUserDetailPage(w, r, subject, "", "Expiry must look like a duration, e.g. 720h.")
+		return
+	}
+	_, raw, err := wb.PATs.Create(r.Context(), subject, r.FormValue("name"), nil, ttl)
+	if err != nil {
+		wb.renderUserDetailPage(w, r, subject, "", err.Error())
+		return
+	}
+	wb.renderUserDetailPage(w, r, subject, raw, "")
+}
+
+func (wb *Web) handleUserPATsRevoke(w http.ResponseWriter, r *http.Request) {
+	subject := r.PathValue("subject")
+	id := r.PathValue("id")
+	p, err := wb.PATs.Get(r.Context(), id)
+	if err != nil || p.Subject != subject {
+		http.NotFound(w, r)
+		return
+	}
+	if err := wb.PATs.Revoke(r.Context(), id); err != nil {
+		wb.renderUserDetailPage(w, r, subject, "", err.Error())
+		return
+	}
+	http.Redirect(w, r, "/web/users/"+subject, http.StatusSeeOther)
 }
 
 func (wb *Web) handleUsersDelete(w http.ResponseWriter, r *http.Request) {
 	subject := r.PathValue("subject")
 	if err := wb.Users.Delete(r.Context(), subject); err != nil {
-		wb.renderUserDetailPage(w, r, subject, err.Error())
+		wb.renderUserDetailPage(w, r, subject, "", err.Error())
 		return
 	}
 	http.Redirect(w, r, "/web/users", http.StatusSeeOther)
@@ -110,12 +156,12 @@ func (wb *Web) handleUsersDelete(w http.ResponseWriter, r *http.Request) {
 func (wb *Web) handleUsersGrant(w http.ResponseWriter, r *http.Request) {
 	subject := r.PathValue("subject")
 	if err := r.ParseForm(); err != nil {
-		wb.renderUserDetailPage(w, r, subject, "That submission did not come through. Try again.")
+		wb.renderUserDetailPage(w, r, subject, "", "That submission did not come through. Try again.")
 		return
 	}
 	caller := identityFromContext(r.Context())
 	if _, err := wb.Grants.Create(r.Context(), subject, r.FormValue("tenantId"), caller.Subject); err != nil {
-		wb.renderUserDetailPage(w, r, subject, err.Error())
+		wb.renderUserDetailPage(w, r, subject, "", err.Error())
 		return
 	}
 	http.Redirect(w, r, "/web/users/"+subject, http.StatusSeeOther)
@@ -124,7 +170,7 @@ func (wb *Web) handleUsersGrant(w http.ResponseWriter, r *http.Request) {
 func (wb *Web) handleUsersRevokeGrant(w http.ResponseWriter, r *http.Request) {
 	subject := r.PathValue("subject")
 	if err := wb.Grants.Delete(r.Context(), subject, r.PathValue("tenantId")); err != nil {
-		wb.renderUserDetailPage(w, r, subject, err.Error())
+		wb.renderUserDetailPage(w, r, subject, "", err.Error())
 		return
 	}
 	http.Redirect(w, r, "/web/users/"+subject, http.StatusSeeOther)
