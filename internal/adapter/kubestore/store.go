@@ -12,8 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/eu-sovereign-cloud/iam/internal/adapter"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
+	"github.com/eu-sovereign-cloud/iam/internal/pkg/kube"
 )
 
 // Store is an in-memory-cached, write-through Kubernetes store for Users,
@@ -51,7 +51,7 @@ func (s *Store) Load(ctx context.Context) error {
 		return err
 	}
 
-	cms, err := s.client.CoreV1().ConfigMaps(s.namespace).List(ctx, adapter.MetaListOpts(labelType))
+	cms, err := s.client.CoreV1().ConfigMaps(s.namespace).List(ctx, kube.MetaListOpts(labelType))
 	if err != nil {
 		return fmt.Errorf("listing configmaps: %w", err)
 	}
@@ -81,16 +81,16 @@ func (s *Store) Load(ctx context.Context) error {
 }
 
 func (s *Store) ensureNamespace(ctx context.Context) error {
-	_, err := s.client.CoreV1().Namespaces().Get(ctx, s.namespace, adapter.MetaGetOpts())
+	_, err := s.client.CoreV1().Namespaces().Get(ctx, s.namespace, kube.MetaGetOpts())
 	if err == nil {
 		return nil
 	}
-	if !adapter.IsNotFound(err) {
+	if !kube.IsNotFound(err) {
 		return fmt.Errorf("getting namespace %s: %w", s.namespace, err)
 	}
 	ns := &corev1.Namespace{}
 	ns.Name = s.namespace
-	if _, err := s.client.CoreV1().Namespaces().Create(ctx, ns, adapter.MetaCreateOpts()); err != nil && !adapter.IsAlreadyExists(err) {
+	if _, err := s.client.CoreV1().Namespaces().Create(ctx, ns, kube.MetaCreateOpts()); err != nil && !kube.IsAlreadyExists(err) {
 		return fmt.Errorf("creating namespace %s: %w", s.namespace, err)
 	}
 	return nil

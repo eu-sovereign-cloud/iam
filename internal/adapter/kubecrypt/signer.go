@@ -17,8 +17,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/eu-sovereign-cloud/iam/internal/adapter"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
+	"github.com/eu-sovereign-cloud/iam/internal/pkg/kube"
 )
 
 const (
@@ -40,11 +40,11 @@ type Signer struct {
 func LoadOrCreate(ctx context.Context, client kubernetes.Interface, namespace string) (*Signer, error) {
 	secrets := client.CoreV1().Secrets(namespace)
 
-	sec, err := secrets.Get(ctx, signingKeySecretName, adapter.MetaGetOpts())
+	sec, err := secrets.Get(ctx, signingKeySecretName, kube.MetaGetOpts())
 	if err == nil {
 		return signerFromSecret(sec)
 	}
-	if !adapter.IsNotFound(err) {
+	if !kube.IsNotFound(err) {
 		return nil, fmt.Errorf("getting signing key secret: %w", err)
 	}
 
@@ -52,10 +52,10 @@ func LoadOrCreate(ctx context.Context, client kubernetes.Interface, namespace st
 	if err != nil {
 		return nil, err
 	}
-	if _, err := secrets.Create(ctx, sec, adapter.MetaCreateOpts()); err != nil {
-		if adapter.IsAlreadyExists(err) {
+	if _, err := secrets.Create(ctx, sec, kube.MetaCreateOpts()); err != nil {
+		if kube.IsAlreadyExists(err) {
 			// Lost a startup race with another instance; read back what it wrote.
-			sec, getErr := secrets.Get(ctx, signingKeySecretName, adapter.MetaGetOpts())
+			sec, getErr := secrets.Get(ctx, signingKeySecretName, kube.MetaGetOpts())
 			if getErr != nil {
 				return nil, fmt.Errorf("getting signing key secret after create race: %w", getErr)
 			}

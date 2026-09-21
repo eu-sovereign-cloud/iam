@@ -8,8 +8,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/eu-sovereign-cloud/iam/internal/adapter"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
+	"github.com/eu-sovereign-cloud/iam/internal/pkg/kube"
 )
 
 // PATs carry no secret material of their own — IAM never persists the raw
@@ -84,8 +84,8 @@ func (s *Store) CreatePAT(ctx context.Context, p model.PAT) error {
 	if err != nil {
 		return err
 	}
-	if _, err := s.client.CoreV1().ConfigMaps(s.namespace).Create(ctx, cm, adapter.MetaCreateOpts()); err != nil {
-		if adapter.IsAlreadyExists(err) {
+	if _, err := s.client.CoreV1().ConfigMaps(s.namespace).Create(ctx, cm, kube.MetaCreateOpts()); err != nil {
+		if kube.IsAlreadyExists(err) {
 			return fmt.Errorf("%w: PAT %q", model.ErrConflict, p.ID)
 		}
 		return fmt.Errorf("creating PAT %q: %w", p.ID, err)
@@ -121,7 +121,7 @@ func (s *Store) ListPATsBySubject(_ context.Context, subject string) ([]model.PA
 
 func (s *Store) DeletePAT(ctx context.Context, id string) error {
 	name := patName(id)
-	if err := s.client.CoreV1().ConfigMaps(s.namespace).Delete(ctx, name, adapter.MetaDeleteOpts()); err != nil && !adapter.IsNotFound(err) {
+	if err := s.client.CoreV1().ConfigMaps(s.namespace).Delete(ctx, name, kube.MetaDeleteOpts()); err != nil && !kube.IsNotFound(err) {
 		return fmt.Errorf("deleting PAT %q: %w", id, err)
 	}
 

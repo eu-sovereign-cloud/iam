@@ -21,13 +21,13 @@ linters:
           files:
             - "**/internal/model/**"
           deny:
-            - pkg: "github.com/eu-sovereign-cloud/iam/internal/(adapter|service|controller|web|config|ports)"
+            - pkg: "github.com/eu-sovereign-cloud/iam/internal/(adapter|service|controller|web|config|ports|pkg)"
               desc: "internal/model must not depend on any other internal package (ADR 0002)"
         ports-has-no-internal-deps:
           files:
             - "**/internal/ports/**"
           deny:
-            - pkg: "github.com/eu-sovereign-cloud/iam/internal/(adapter|service|controller|web|config)"
+            - pkg: "github.com/eu-sovereign-cloud/iam/internal/(adapter|service|controller|web|config|pkg)"
               desc: "internal/ports must not depend on any other internal package besides model (ADR 0013)"
 
 formatters:

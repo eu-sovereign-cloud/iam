@@ -8,8 +8,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/eu-sovereign-cloud/iam/internal/adapter"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
+	"github.com/eu-sovereign-cloud/iam/internal/pkg/kube"
 )
 
 func userToConfigMap(u model.User, namespace string) *corev1.ConfigMap {
@@ -49,8 +49,8 @@ func (s *Store) CreateUser(ctx context.Context, u model.User) error {
 	}
 
 	cm := userToConfigMap(u, s.namespace)
-	if _, err := s.client.CoreV1().ConfigMaps(s.namespace).Create(ctx, cm, adapter.MetaCreateOpts()); err != nil {
-		if adapter.IsAlreadyExists(err) {
+	if _, err := s.client.CoreV1().ConfigMaps(s.namespace).Create(ctx, cm, kube.MetaCreateOpts()); err != nil {
+		if kube.IsAlreadyExists(err) {
 			return fmt.Errorf("%w: user %q", model.ErrConflict, u.Subject)
 		}
 		return fmt.Errorf("creating user %q: %w", u.Subject, err)
@@ -91,7 +91,7 @@ func (s *Store) UpdateUser(ctx context.Context, u model.User) error {
 	}
 
 	cm := userToConfigMap(u, s.namespace)
-	if _, err := s.client.CoreV1().ConfigMaps(s.namespace).Update(ctx, cm, adapter.MetaUpdateOpts()); err != nil {
+	if _, err := s.client.CoreV1().ConfigMaps(s.namespace).Update(ctx, cm, kube.MetaUpdateOpts()); err != nil {
 		return fmt.Errorf("updating user %q: %w", u.Subject, err)
 	}
 
@@ -103,7 +103,7 @@ func (s *Store) UpdateUser(ctx context.Context, u model.User) error {
 
 func (s *Store) DeleteUser(ctx context.Context, subject string) error {
 	name := userName(subject)
-	if err := s.client.CoreV1().ConfigMaps(s.namespace).Delete(ctx, name, adapter.MetaDeleteOpts()); err != nil && !adapter.IsNotFound(err) {
+	if err := s.client.CoreV1().ConfigMaps(s.namespace).Delete(ctx, name, kube.MetaDeleteOpts()); err != nil && !kube.IsNotFound(err) {
 		return fmt.Errorf("deleting user %q: %w", subject, err)
 	}
 

@@ -12,12 +12,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/eu-sovereign-cloud/iam/internal/adapter"
 	"github.com/eu-sovereign-cloud/iam/internal/adapter/kubecrypt"
 	"github.com/eu-sovereign-cloud/iam/internal/adapter/kubestore"
 	"github.com/eu-sovereign-cloud/iam/internal/adapter/system"
 	"github.com/eu-sovereign-cloud/iam/internal/config"
 	"github.com/eu-sovereign-cloud/iam/internal/controller"
+	"github.com/eu-sovereign-cloud/iam/internal/pkg/kube"
 	"github.com/eu-sovereign-cloud/iam/internal/service"
 	"github.com/eu-sovereign-cloud/iam/internal/web"
 )
@@ -39,7 +39,7 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	clientset, err := adapter.BuildClientset(cfg.KubeconfigPath)
+	clientset, err := kube.BuildClientset(cfg.KubeconfigPath)
 	if err != nil {
 		return err
 	}

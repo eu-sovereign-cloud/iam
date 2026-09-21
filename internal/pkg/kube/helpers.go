@@ -1,10 +1,4 @@
-// Package adapter holds the driven adapters IAM's controllers depend on,
-// plus generic helpers shared across them. Each concrete adapter lives in
-// its own subpackage — kubestore (ConfigMap/Secret-backed data store, ADR
-// 0001, ADR 0009), kubecrypt (ES256 JWT signer/verifier, ADR 0005, ADR
-// 0012), system (the production Clock) — so more can be added without
-// growing one shared package indefinitely.
-package adapter
+package kube
 
 import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

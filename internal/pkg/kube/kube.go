@@ -1,4 +1,9 @@
-package adapter
+// Package kube holds generic Kubernetes client-go plumbing shared by every
+// adapter subpackage under internal/adapter (kubestore, kubecrypt):
+// building a clientset from in-cluster config or a kubeconfig file, and
+// small metav1/apierrors wrappers. It knows nothing about IAM's domain —
+// just Kubernetes.
+package kube
 
 import (
 	"fmt"

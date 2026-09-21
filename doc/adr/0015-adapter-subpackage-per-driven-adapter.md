@@ -4,6 +4,15 @@
 
 Accepted.
 
+Note: `kube.go` and `k8shelpers.go`, described below as staying directly
+under `internal/adapter`, later moved again to `internal/pkg/kube`
+(package `kube`) — they're generic Kubernetes client-go plumbing with no
+IAM domain knowledge, not an adapter themselves, so they don't belong
+under `internal/adapter` at all. `internal/adapter` now holds only
+subpackages, no files of its own. Everything else below — the
+kubestore/kubecrypt/system split and the naming convention — still
+stands.
+
 ## Context
 
 `internal/adapter` held every driven adapter's code as one flat package:
