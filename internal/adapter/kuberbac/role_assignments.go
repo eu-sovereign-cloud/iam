@@ -37,6 +37,9 @@ func roleAssignmentObject(tenantID, subject string, roles []string) (*unstructur
 // repair).
 func (s *Store) SetRoleAssignment(ctx context.Context, tenantID, subject string, roles []string) error {
 	ns := tenantNamespace(tenantID)
+	if err := s.ensureNamespace(ctx, ns); err != nil {
+		return err
+	}
 	name := roleAssignmentName(subject)
 	obj, err := roleAssignmentObject(tenantID, subject, roles)
 	if err != nil {

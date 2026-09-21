@@ -15,10 +15,14 @@ repo settles both:
   string scope; its Kubernetes namespace is `hex(sha3-224(tenantID))`
   (`ecp/framework/backend/kubernetes/adapter.go`'s `ComputeNamespace`),
   auto-provisioned by ecp the first time any tenant-scoped, namespaced
-  object (`Role`, `RoleAssignment`, `Workspace`) is written into it. So
-  "IAM creates the tenant in ecp" concretely means: **creating a `Role`
-  object in that computed namespace** is what actually provisions the
-  tenant on the ecp side — nothing else is needed or possible.
+  object (`Role`, `RoleAssignment`, `Workspace`) is written **through
+  ecp's own REST API** (`NamespaceManagingWriterAdapter.Create` is
+  inline logic in ecp's write path, not a cluster-wide watch/reconcile
+  loop — confirmed the hard way, see Decision below). So "IAM creates
+  the tenant in ecp" concretely means: **creating a `Role` object in
+  that computed namespace** is the ecp-side equivalent of provisioning
+  the tenant — but since this backchannel bypasses ecp's REST API
+  entirely, IAM has to create that namespace itself first.
 - `Role`/`RoleAssignment` are namespaced CRDs, group
   `authorization.v1.secapi.cloud`, version `v1`.
   `RoleSpec{Permissions []{Provider, Resources []string, Verb []string}}`,
@@ -87,9 +91,23 @@ needed (`client-go` is already required by `kubestore`).
 - `DeleteTenant` refuses (`ErrConflict`) while any `Grant` still exists
   for the tenant — the only "is this tenant empty" check IAM can make
   for itself, since it has no visibility into whatever else ecp's
-  namespace might hold (`Workspace`s, workloads). It never touches the
-  Kubernetes `Namespace` object itself; ecp's own documented namespace
-  auto-cleanup handles that once truly empty.
+  namespace might hold (`Workspace`s, workloads). It only ever deletes
+  the `Role` it manages, never the Kubernetes `Namespace` object itself
+  — ecp's own documented namespace auto-cleanup handles that once truly
+  empty, in deployments where ecp is actually running.
+- `kuberbac.EnsureTenantAdminRole`/`SetRoleAssignment` each call an
+  unexported `ensureNamespace` first (get-or-create the tenant's
+  namespace as a bare `Namespace` object) before writing into it.
+  **Revision, found by a real e2e run against a kind cluster with no
+  ecp deployed in it**: the original version of this decision assumed
+  writing a `Role`/`RoleAssignment` directly would land in an
+  already-provisioned namespace the way it would going through ecp's
+  REST API — it doesn't, because that provisioning is inline logic in
+  ecp's own write path (see Context), which this backchannel never
+  runs. Nothing else creates the namespace, so IAM has to. `DeleteTenant`
+  still never deletes the `Namespace` object — only creation needed the
+  correction, not the earlier "IAM never touches the Namespace object"
+  deletion decision.
 
 ## Consequences
 

@@ -32,6 +32,9 @@ func roleObject(tenantID string) (*unstructured.Unstructured, error) {
 // so it's safe to call both at tenant creation and repeatedly from repair.
 func (s *Store) EnsureTenantAdminRole(ctx context.Context, tenantID string) error {
 	ns := tenantNamespace(tenantID)
+	if err := s.ensureNamespace(ctx, ns); err != nil {
+		return err
+	}
 	obj, err := roleObject(tenantID)
 	if err != nil {
 		return err

@@ -19,6 +19,7 @@ import (
 var (
 	roleGVR           = schema.GroupVersionResource{Group: "authorization.v1.secapi.cloud", Version: "v1", Resource: "roles"}
 	roleAssignmentGVR = schema.GroupVersionResource{Group: "authorization.v1.secapi.cloud", Version: "v1", Resource: "role-assignments"}
+	namespaceGVR      = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "namespaces"}
 )
 
 func newTestStore() (*kuberbac.Store, *dynamicfake.FakeDynamicClient) {
@@ -46,6 +47,14 @@ func TestEnsureTenantAdminRole(t *testing.T) {
 
 	require.NoError(t, store.EnsureTenantAdminRole(ctx, "tenant-1"))
 
+	// The tenant's namespace must exist before writing into it — ecp's
+	// own auto-provisioning is REST-write-path logic this backchannel
+	// bypasses entirely, so nothing else would create it (this was a
+	// real e2e failure: creating a Role in a namespace nobody had
+	// created yet fails outright against a real API server).
+	_, err := client.Resource(namespaceGVR).Get(ctx, ns, metav1.GetOptions{})
+	require.NoError(t, err, "EnsureTenantAdminRole must create the tenant namespace if missing")
+
 	obj, err := client.Resource(roleGVR).Namespace(ns).Get(ctx, model.TenantAdminRole, metav1.GetOptions{})
 	require.NoError(t, err)
 	perms, found := unstructuredSlice(obj.Object, "spec", "permissions")
@@ -56,6 +65,17 @@ func TestEnsureTenantAdminRole(t *testing.T) {
 	require.NoError(t, store.EnsureTenantAdminRole(ctx, "tenant-1"))
 	_, err = client.Resource(roleGVR).Namespace(ns).Get(ctx, model.TenantAdminRole, metav1.GetOptions{})
 	require.NoError(t, err)
+}
+
+func TestSetRoleAssignment_CreatesNamespace(t *testing.T) {
+	ctx := context.Background()
+	store, client := newTestStore()
+	ns := tenantNamespace("tenant-1")
+
+	require.NoError(t, store.SetRoleAssignment(ctx, "tenant-1", "alice", []string{"member"}))
+
+	_, err := client.Resource(namespaceGVR).Get(ctx, ns, metav1.GetOptions{})
+	require.NoError(t, err, "SetRoleAssignment must create the tenant namespace if missing")
 }
 
 func TestDeleteTenantAdminRole(t *testing.T) {
