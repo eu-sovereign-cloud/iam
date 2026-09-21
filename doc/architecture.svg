@@ -8,7 +8,9 @@
     server. kuberbac writes ecp's Role/RoleAssignment CRDs directly as a
     Kubernetes backchannel (ADR 0018); the ecp gateway independently reads
     those objects and validates JWTs issued by iam, with no direct call
-    between the two services.
+    between the two services. internal/service also registers unauthenticated
+    OIDC discovery, JWKS, /userinfo, and /healthz routes directly on the
+    top-level mux, outside RequireAuth and outside /api/* (ADR 0019, 0020).
   </desc>
 
   <defs>
@@ -55,11 +57,14 @@
   <text x="330" y="216" text-anchor="middle" class="sub">requireAuth</text>
   <text x="330" y="234" text-anchor="middle" class="cap">(driving adapter)</text>
 
-  <rect class="box" x="235" y="410" width="190" height="100"/>
+  <rect class="box" x="235" y="410" width="190" height="148"/>
   <text x="330" y="438" text-anchor="middle" class="lbl">internal/service</text>
   <text x="330" y="458" text-anchor="middle" class="sub">JSON/REST · /api/*</text>
   <text x="330" y="476" text-anchor="middle" class="sub">RequireAuth</text>
-  <text x="330" y="494" text-anchor="middle" class="cap">(driving adapter)</text>
+  <text x="330" y="494" text-anchor="middle" class="sub">+ discovery/JWKS/userinfo</text>
+  <text x="330" y="510" text-anchor="middle" class="cap">+ /healthz (unauthenticated,</text>
+  <text x="330" y="524" text-anchor="middle" class="cap">top-level, ADR 0019/0020)</text>
+  <text x="330" y="542" text-anchor="middle" class="cap">(driving adapter)</text>
 
   <line class="arr" x1="195" y1="197" x2="233" y2="200"/>
   <line class="arr" x1="195" y1="462" x2="233" y2="460"/>
@@ -73,7 +78,7 @@
   <text x="622" y="184" text-anchor="middle" class="sub">CreateTenant · DeleteTenant</text>
   <text x="622" y="201" text-anchor="middle" class="sub">RepairTenant · CreateUser</text>
   <text x="622" y="218" text-anchor="middle" class="sub">CreateGrant · CreatePAT</text>
-  <text x="622" y="235" text-anchor="middle" class="sub">AuthenticateUser · ...</text>
+  <text x="622" y="235" text-anchor="middle" class="sub">AuthenticateUser · GetJWKS · ...</text>
   <text x="622" y="257" text-anchor="middle" class="cap">(business logic, ADR 0014)</text>
   <text x="622" y="274" text-anchor="middle" class="cap">depends only on ports below</text>
 

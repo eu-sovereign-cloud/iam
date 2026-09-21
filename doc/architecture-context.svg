@@ -6,10 +6,11 @@
     API: iam writes its own state (ConfigMaps/Secrets) and ecp's
     Role/RoleAssignment CRDs (ADR 0018 backchannel); ecp independently
     reads/writes its own resources in the same API server and validates the
-    JWTs iam issues. Once iam's userinfo/JWKS endpoint ships (issue #2),
-    ecp will also call iam directly, to check whether a given PAT has been
-    revoked. Admins reach iam directly; tenant/workload clients use an
-    iam-issued PAT (JWT) directly against ecp's own API.
+    JWTs iam issues. iam's userinfo/JWKS endpoints have since shipped
+    (issue #2, ADR 0019), so ecp could call iam directly to check whether a
+    given PAT has been revoked — it doesn't do that yet. Admins reach iam
+    directly; tenant/workload clients use an iam-issued PAT (JWT) directly
+    against ecp's own API.
   </desc>
 
   <defs>
@@ -37,7 +38,7 @@
 
   <rect x="0" y="0" width="1300" height="760" fill="#ffffff"/>
   <text x="650" y="30" text-anchor="middle" font-size="20" font-weight="700" fill="#16232e">iam &amp; ecp — system context</text>
-  <text x="650" y="50" text-anchor="middle" font-size="13" fill="#4a5c6b">two independent services; ecp will also depend directly on iam's userinfo endpoint (issue #2)</text>
+  <text x="650" y="50" text-anchor="middle" font-size="13" fill="#4a5c6b">two independent services; iam publishes a userinfo/JWKS endpoint ecp could call directly (issue #2) but doesn't yet</text>
 
   <!-- Cluster boundary -->
   <rect class="cluster" x="330" y="85" width="650" height="480"/>
@@ -104,13 +105,13 @@
 
   <!-- Planned direct dependency: ecp -> iam userinfo/JWKS (issue #2) -->
   <path class="arrD" d="M 700,470 C 660,510 590,510 560,470" />
-  <text x="630" y="590" text-anchor="middle" class="cap">planned: ecp calls iam's /userinfo + JWKS (issue #2) to check PAT revocation</text>
-  <text x="630" y="606" text-anchor="middle" class="cap">status — not implemented yet; today, RBAC via the Kubernetes API above is the</text>
-  <text x="630" y="622" text-anchor="middle" class="cap">only coordination between the two services</text>
+  <text x="630" y="590" text-anchor="middle" class="cap">iam publishes /userinfo + JWKS (issue #2, ADR 0019) so ecp could check PAT</text>
+  <text x="630" y="606" text-anchor="middle" class="cap">revocation status directly — ecp doesn't call them yet; today, RBAC via the</text>
+  <text x="630" y="622" text-anchor="middle" class="cap">Kubernetes API above is the only coordination actually used between the two</text>
 
   <!-- Legend -->
   <line class="arr" x1="60" y1="695" x2="100" y2="695"/>
   <text x="108" y="700" class="cap">reads / writes</text>
   <line class="arrD" x1="260" y1="695" x2="300" y2="695"/>
-  <text x="308" y="700" class="cap">planned direct dependency, not implemented yet</text>
+  <text x="308" y="700" class="cap">possible direct dependency, not used by ecp yet</text>
 </svg>
