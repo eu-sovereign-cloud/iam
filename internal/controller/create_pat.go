@@ -39,6 +39,9 @@ func (c *CreatePAT) Do(ctx context.Context, subject, name string, scope *model.T
 	if subject == "" {
 		return model.PAT{}, "", fmt.Errorf("%w: subject is required", model.ErrInvalid)
 	}
+	if err := model.RequireSelfOrAdmin(ctx, subject); err != nil {
+		return model.PAT{}, "", err
+	}
 	if ttl <= 0 {
 		ttl = noExpiryDuration
 	}

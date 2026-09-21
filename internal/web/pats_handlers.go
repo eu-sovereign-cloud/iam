@@ -35,7 +35,7 @@ func (wb *Web) renderPATsPage(w http.ResponseWriter, r *http.Request, newSecret,
 	user := model.IdentityFromContext(r.Context())
 	pats, err := wb.ListUserPATs.Do(r.Context(), user.Subject)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), statusFor(err))
 		return
 	}
 	views := make([]patView, 0, len(pats))
@@ -77,14 +77,7 @@ func (wb *Web) handlePATsCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wb *Web) handlePATsRevoke(w http.ResponseWriter, r *http.Request) {
-	user := model.IdentityFromContext(r.Context())
-	id := r.PathValue("id")
-	p, err := wb.GetPAT.Do(r.Context(), id)
-	if err != nil || p.Subject != user.Subject {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	if err := wb.RevokePAT.Do(r.Context(), id); err != nil {
+	if err := wb.RevokePAT.Do(r.Context(), r.PathValue("id")); err != nil {
 		wb.renderPATsPage(w, r, "", err.Error())
 		return
 	}

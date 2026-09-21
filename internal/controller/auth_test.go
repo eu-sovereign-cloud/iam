@@ -24,7 +24,8 @@ func TestAuthenticateUser(t *testing.T) {
 	authenticatePAT := &controller.AuthenticatePAT{PATs: pats, Signer: fakeSigner{}, Clock: clock}
 	authenticateUser := &controller.AuthenticateUser{PATs: authenticatePAT, Users: users}
 
-	_, raw, err := createPAT.Do(ctx, "alice", "laptop", nil, 0)
+	selfCtx := model.WithIdentity(ctx, model.User{Subject: "alice"})
+	_, raw, err := createPAT.Do(selfCtx, "alice", "laptop", nil, 0)
 	require.NoError(t, err)
 
 	u, err := authenticateUser.Do(ctx, raw)
@@ -44,7 +45,8 @@ func TestAuthenticateUser_UnknownSubject(t *testing.T) {
 	authenticatePAT := &controller.AuthenticatePAT{PATs: pats, Signer: fakeSigner{}, Clock: clock}
 	authenticateUser := &controller.AuthenticateUser{PATs: authenticatePAT, Users: newFakeUserStore()}
 
-	_, raw, err := createPAT.Do(ctx, "ghost", "laptop", nil, 0)
+	selfCtx := model.WithIdentity(ctx, model.User{Subject: "ghost"})
+	_, raw, err := createPAT.Do(selfCtx, "ghost", "laptop", nil, 0)
 	require.NoError(t, err)
 
 	_, err = authenticateUser.Do(ctx, raw)

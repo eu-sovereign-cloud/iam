@@ -27,7 +27,7 @@ func (wb *Web) renderUsersPage(w http.ResponseWriter, r *http.Request, errMsg st
 
 	users, err := wb.ListUsers.Do(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), statusFor(err))
 		return
 	}
 	userViews := make([]userView, 0, len(users))
@@ -71,7 +71,7 @@ func (wb *Web) renderUserDetailPage(w http.ResponseWriter, r *http.Request, subj
 
 	grants, err := wb.ListUserGrants.Do(r.Context(), subject)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), statusFor(err))
 		return
 	}
 	grantViews := make([]grantView, 0, len(grants))
@@ -81,7 +81,7 @@ func (wb *Web) renderUserDetailPage(w http.ResponseWriter, r *http.Request, subj
 
 	tenants, err := wb.ListTenants.Do(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), statusFor(err))
 		return
 	}
 	tenantViews := make([]tenantView, 0, len(tenants))
@@ -91,7 +91,7 @@ func (wb *Web) renderUserDetailPage(w http.ResponseWriter, r *http.Request, subj
 
 	pats, err := wb.ListUserPATs.Do(r.Context(), subject)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), statusFor(err))
 		return
 	}
 	patViews := make([]patView, 0, len(pats))
@@ -135,13 +135,7 @@ func (wb *Web) handleUserPATsCreate(w http.ResponseWriter, r *http.Request) {
 
 func (wb *Web) handleUserPATsRevoke(w http.ResponseWriter, r *http.Request) {
 	subject := r.PathValue("subject")
-	id := r.PathValue("id")
-	p, err := wb.GetPAT.Do(r.Context(), id)
-	if err != nil || p.Subject != subject {
-		http.NotFound(w, r)
-		return
-	}
-	if err := wb.RevokePAT.Do(r.Context(), id); err != nil {
+	if err := wb.RevokePAT.Do(r.Context(), r.PathValue("id")); err != nil {
 		wb.renderUserDetailPage(w, r, subject, "", err.Error())
 		return
 	}

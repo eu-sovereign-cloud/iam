@@ -59,15 +59,17 @@ func newTestStack(t *testing.T) *testStack {
 
 	createPAT := &controller.CreatePAT{PATs: store, Grants: store, Signer: signer, Clock: clock, Issuer: "https://iam.example.com", Audience: []string{"ecp-gateway"}}
 	listUserPATs := &controller.ListUserPATs{PATs: store}
-	getPAT := &controller.GetPAT{PATs: store}
 	revokePAT := &controller.RevokePAT{PATs: store}
 
 	authenticatePAT := &controller.AuthenticatePAT{PATs: store, Signer: signer, Clock: clock}
 	authenticateUser := &controller.AuthenticateUser{PATs: authenticatePAT, Users: store}
 
-	admin, err := createUser.Do(ctx, "admin@example.com", "Admin", true)
+	// Seeding the first admin bypasses normal auth (there's no admin yet to
+	// authenticate as), the same way controller.EnsureBootstrapAdmin does.
+	seedCtx := model.WithIdentity(ctx, model.User{Subject: "test-seed", Admin: true})
+	admin, err := createUser.Do(seedCtx, "admin@example.com", "Admin", true)
 	require.NoError(t, err)
-	_, adminPAT, err := createPAT.Do(ctx, admin.Subject, "bootstrap", nil, 0)
+	_, adminPAT, err := createPAT.Do(seedCtx, admin.Subject, "bootstrap", nil, 0)
 	require.NoError(t, err)
 
 	return &testStack{
@@ -76,7 +78,7 @@ func newTestStack(t *testing.T) *testStack {
 			CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant,
 			CreateUser: createUser, ListUsers: listUsers, SetUserAdmin: setUserAdmin, DeleteUser: deleteUser,
 			CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant,
-			CreatePAT: createPAT, ListUserPATs: listUserPATs, GetPAT: getPAT, RevokePAT: revokePAT,
+			CreatePAT: createPAT, ListUserPATs: listUserPATs, RevokePAT: revokePAT,
 		},
 		adminPAT:   adminPAT,
 		createUser: createUser,
@@ -104,9 +106,10 @@ func TestEndToEnd_CreateUserGrantIssuePATRevoke(t *testing.T) {
 	mux := stack.svc.Router()
 
 	// Non-admin cannot create tenants.
-	nonAdmin, err := stack.createUser.Do(context.Background(), "bob@example.com", "Bob", false)
+	seedCtx := model.WithIdentity(context.Background(), model.User{Subject: "test-seed", Admin: true})
+	nonAdmin, err := stack.createUser.Do(seedCtx, "bob@example.com", "Bob", false)
 	require.NoError(t, err)
-	_, bobPAT, err := stack.createPAT.Do(context.Background(), nonAdmin.Subject, "bob-pat", nil, 0)
+	_, bobPAT, err := stack.createPAT.Do(seedCtx, nonAdmin.Subject, "bob-pat", nil, 0)
 	require.NoError(t, err)
 
 	rec := doJSON(t, mux, http.MethodPost, "/api/v1/tenants", bobPAT, map[string]string{"tenantId": "tenant-1"})

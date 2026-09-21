@@ -73,7 +73,6 @@ func run() error {
 
 	createPAT := &controller.CreatePAT{PATs: store, Grants: store, Signer: signer, Clock: clock, Issuer: cfg.JWTIssuer, Audience: cfg.JWTAudience}
 	listUserPATs := &controller.ListUserPATs{PATs: store}
-	getPAT := &controller.GetPAT{PATs: store}
 	revokePAT := &controller.RevokePAT{PATs: store}
 	authenticatePAT := &controller.AuthenticatePAT{PATs: store, Signer: signer, Clock: clock}
 
@@ -92,14 +91,14 @@ func run() error {
 		CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant,
 		CreateUser: createUser, ListUsers: listUsers, SetUserAdmin: setUserAdmin, DeleteUser: deleteUser,
 		CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant,
-		CreatePAT: createPAT, ListUserPATs: listUserPATs, GetPAT: getPAT, RevokePAT: revokePAT,
+		CreatePAT: createPAT, ListUserPATs: listUserPATs, RevokePAT: revokePAT,
 	}
 	webUI, err := web.New(
 		authenticateUser,
 		createTenant, listTenants, deleteTenant,
 		createUser, getUser, listUsers, deleteUser,
 		createGrant, listUserGrants, deleteGrant,
-		createPAT, listUserPATs, getPAT, revokePAT,
+		createPAT, listUserPATs, revokePAT,
 	)
 	if err != nil {
 		return err

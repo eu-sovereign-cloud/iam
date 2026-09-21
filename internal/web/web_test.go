@@ -11,6 +11,7 @@ import (
 
 	"github.com/eu-sovereign-cloud/iam/internal/adapter"
 	"github.com/eu-sovereign-cloud/iam/internal/controller"
+	"github.com/eu-sovereign-cloud/iam/internal/model"
 	"github.com/eu-sovereign-cloud/iam/internal/web"
 )
 
@@ -38,15 +39,17 @@ func TestWebRoutesRenderWithoutError(t *testing.T) {
 	require.NoError(t, err)
 	createPAT := &controller.CreatePAT{PATs: store, Grants: store, Signer: signer, Clock: clock, Issuer: "https://iam.example.com", Audience: []string{"ecp-gateway"}}
 	listUserPATs := &controller.ListUserPATs{PATs: store}
-	getPAT := &controller.GetPAT{PATs: store}
 	revokePAT := &controller.RevokePAT{PATs: store}
 
 	authenticatePAT := &controller.AuthenticatePAT{PATs: store, Signer: signer, Clock: clock}
 	authenticateUser := &controller.AuthenticateUser{PATs: authenticatePAT, Users: store}
 
-	admin, err := createUser.Do(ctx, "admin@example.com", "Admin", true)
+	// Seeding the first admin bypasses normal auth (there's no admin yet to
+	// authenticate as), the same way controller.EnsureBootstrapAdmin does.
+	seedCtx := model.WithIdentity(ctx, model.User{Subject: "test-seed", Admin: true})
+	admin, err := createUser.Do(seedCtx, "admin@example.com", "Admin", true)
 	require.NoError(t, err)
-	_, adminPAT, err := createPAT.Do(ctx, admin.Subject, "bootstrap", nil, 0)
+	_, adminPAT, err := createPAT.Do(seedCtx, admin.Subject, "bootstrap", nil, 0)
 	require.NoError(t, err)
 
 	wb, err := web.New(
@@ -54,7 +57,7 @@ func TestWebRoutesRenderWithoutError(t *testing.T) {
 		createTenant, listTenants, deleteTenant,
 		createUser, getUser, listUsers, deleteUser,
 		createGrant, listUserGrants, deleteGrant,
-		createPAT, listUserPATs, getPAT, revokePAT,
+		createPAT, listUserPATs, revokePAT,
 	)
 	require.NoError(t, err)
 	mux := wb.Router()

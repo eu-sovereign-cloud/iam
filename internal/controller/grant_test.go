@@ -12,7 +12,7 @@ import (
 )
 
 func TestCreateGrant_RequiresExistingUserAndTenant(t *testing.T) {
-	ctx := context.Background()
+	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
 	clock := fakeClock{now: time.Now()}
 	users := newFakeUserStore()
 	tenants := newFakeTenantStore()
@@ -42,4 +42,17 @@ func TestCreateGrant_RequiresExistingUserAndTenant(t *testing.T) {
 	got, err = list.Do(ctx, "alice")
 	require.NoError(t, err)
 	require.Empty(t, got)
+}
+
+func TestListUserGrants_SelfOrAdmin(t *testing.T) {
+	grants := newFakeGrantStore()
+	list := &controller.ListUserGrants{Grants: grants}
+
+	selfCtx := model.WithIdentity(context.Background(), model.User{Subject: "alice"})
+	_, err := list.Do(selfCtx, "alice")
+	require.NoError(t, err)
+
+	otherCtx := model.WithIdentity(context.Background(), model.User{Subject: "bob"})
+	_, err = list.Do(otherCtx, "alice")
+	require.ErrorIs(t, err, model.ErrForbidden)
 }

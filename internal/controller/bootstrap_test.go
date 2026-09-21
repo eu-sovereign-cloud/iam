@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/eu-sovereign-cloud/iam/internal/controller"
+	"github.com/eu-sovereign-cloud/iam/internal/model"
 )
 
 func TestEnsureBootstrapAdmin_CreatesOnlyOnce(t *testing.T) {
@@ -27,7 +28,8 @@ func TestEnsureBootstrapAdmin_CreatesOnlyOnce(t *testing.T) {
 	require.True(t, created)
 	require.NotEmpty(t, raw)
 
-	admin, err := (&controller.GetUser{Users: users}).Do(ctx, controller.BootstrapAdminSubject)
+	adminCtx := model.WithIdentity(ctx, model.User{Subject: "admin", Admin: true})
+	admin, err := (&controller.GetUser{Users: users}).Do(adminCtx, controller.BootstrapAdminSubject)
 	require.NoError(t, err)
 	require.True(t, admin.Admin)
 

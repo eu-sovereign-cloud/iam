@@ -9,14 +9,16 @@ import (
 	"github.com/eu-sovereign-cloud/iam/internal/ports"
 )
 
-// CreateUser registers a User. Callers are responsible for enforcing that
-// only admins invoke it.
+// CreateUser registers a User. Admin-only.
 type CreateUser struct {
 	Users ports.UserStore
 	Clock ports.Clock
 }
 
 func (c *CreateUser) Do(ctx context.Context, subject, displayName string, admin bool) (model.User, error) {
+	if err := model.RequireAdmin(ctx); err != nil {
+		return model.User{}, err
+	}
 	subject = strings.TrimSpace(subject)
 	if subject == "" {
 		return model.User{}, fmt.Errorf("%w: subject is required", model.ErrInvalid)

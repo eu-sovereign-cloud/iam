@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/eu-sovereign-cloud/iam/internal/model"
@@ -29,14 +30,23 @@ func (wb *Web) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (wb *Web) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
-	return wb.requireAuth(func(w http.ResponseWriter, r *http.Request) {
-		if !model.IdentityFromContext(r.Context()).Admin {
-			http.Error(w, "admin privileges required", http.StatusForbidden)
-			return
-		}
-		next(w, r)
-	})
+// statusFor maps a controller error to an HTTP status, mirroring
+// internal/service's helper of the same name (ADR 0014: authorization now
+// lives in internal/controller, not in this package's middleware, so web
+// handlers need to translate model.ErrForbidden etc. themselves).
+func statusFor(err error) int {
+	switch {
+	case errors.Is(err, model.ErrNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, model.ErrConflict):
+		return http.StatusConflict
+	case errors.Is(err, model.ErrForbidden):
+		return http.StatusForbidden
+	case errors.Is(err, model.ErrInvalid):
+		return http.StatusBadRequest
+	default:
+		return http.StatusInternalServerError
+	}
 }
 
 func (wb *Web) handleRoot(w http.ResponseWriter, r *http.Request) {

@@ -41,7 +41,6 @@ type Web struct {
 
 	CreatePAT    *controller.CreatePAT
 	ListUserPATs *controller.ListUserPATs
-	GetPAT       *controller.GetPAT
 	RevokePAT    *controller.RevokePAT
 
 	tmpl *template.Template
@@ -52,7 +51,7 @@ func New(
 	createTenant *controller.CreateTenant, listTenants *controller.ListTenants, deleteTenant *controller.DeleteTenant,
 	createUser *controller.CreateUser, getUser *controller.GetUser, listUsers *controller.ListUsers, deleteUser *controller.DeleteUser,
 	createGrant *controller.CreateGrant, listUserGrants *controller.ListUserGrants, deleteGrant *controller.DeleteGrant,
-	createPAT *controller.CreatePAT, listUserPATs *controller.ListUserPATs, getPAT *controller.GetPAT, revokePAT *controller.RevokePAT,
+	createPAT *controller.CreatePAT, listUserPATs *controller.ListUserPATs, revokePAT *controller.RevokePAT,
 ) (*Web, error) {
 	tmpl, err := template.ParseFS(templateFS, "templates/*.html")
 	if err != nil {
@@ -63,7 +62,7 @@ func New(
 		CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant,
 		CreateUser: createUser, GetUser: getUser, ListUsers: listUsers, DeleteUser: deleteUser,
 		CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant,
-		CreatePAT: createPAT, ListUserPATs: listUserPATs, GetPAT: getPAT, RevokePAT: revokePAT,
+		CreatePAT: createPAT, ListUserPATs: listUserPATs, RevokePAT: revokePAT,
 		tmpl: tmpl,
 	}, nil
 }
@@ -89,18 +88,18 @@ func (wb *Web) Router() *http.ServeMux {
 	mux.HandleFunc("POST /web/pats", wb.requireAuth(wb.handlePATsCreate))
 	mux.HandleFunc("POST /web/pats/{id}/revoke", wb.requireAuth(wb.handlePATsRevoke))
 
-	mux.HandleFunc("GET /web/tenants", wb.requireAdmin(wb.handleTenantsPage))
-	mux.HandleFunc("POST /web/tenants", wb.requireAdmin(wb.handleTenantsCreate))
-	mux.HandleFunc("POST /web/tenants/{tenantId}/delete", wb.requireAdmin(wb.handleTenantsDelete))
+	mux.HandleFunc("GET /web/tenants", wb.requireAuth(wb.handleTenantsPage))
+	mux.HandleFunc("POST /web/tenants", wb.requireAuth(wb.handleTenantsCreate))
+	mux.HandleFunc("POST /web/tenants/{tenantId}/delete", wb.requireAuth(wb.handleTenantsDelete))
 
-	mux.HandleFunc("GET /web/users", wb.requireAdmin(wb.handleUsersPage))
-	mux.HandleFunc("POST /web/users", wb.requireAdmin(wb.handleUsersCreate))
-	mux.HandleFunc("GET /web/users/{subject}", wb.requireAdmin(wb.handleUserDetailPage))
-	mux.HandleFunc("POST /web/users/{subject}/delete", wb.requireAdmin(wb.handleUsersDelete))
-	mux.HandleFunc("POST /web/users/{subject}/grants", wb.requireAdmin(wb.handleUsersGrant))
-	mux.HandleFunc("POST /web/users/{subject}/grants/{tenantId}/revoke", wb.requireAdmin(wb.handleUsersRevokeGrant))
-	mux.HandleFunc("POST /web/users/{subject}/pats", wb.requireAdmin(wb.handleUserPATsCreate))
-	mux.HandleFunc("POST /web/users/{subject}/pats/{id}/revoke", wb.requireAdmin(wb.handleUserPATsRevoke))
+	mux.HandleFunc("GET /web/users", wb.requireAuth(wb.handleUsersPage))
+	mux.HandleFunc("POST /web/users", wb.requireAuth(wb.handleUsersCreate))
+	mux.HandleFunc("GET /web/users/{subject}", wb.requireAuth(wb.handleUserDetailPage))
+	mux.HandleFunc("POST /web/users/{subject}/delete", wb.requireAuth(wb.handleUsersDelete))
+	mux.HandleFunc("POST /web/users/{subject}/grants", wb.requireAuth(wb.handleUsersGrant))
+	mux.HandleFunc("POST /web/users/{subject}/grants/{tenantId}/revoke", wb.requireAuth(wb.handleUsersRevokeGrant))
+	mux.HandleFunc("POST /web/users/{subject}/pats", wb.requireAuth(wb.handleUserPATsCreate))
+	mux.HandleFunc("POST /web/users/{subject}/pats/{id}/revoke", wb.requireAuth(wb.handleUserPATsRevoke))
 
 	mux.HandleFunc("GET /web/", wb.handleRoot)
 

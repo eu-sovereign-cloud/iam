@@ -20,7 +20,7 @@ func (wb *Web) renderTenantsPage(w http.ResponseWriter, r *http.Request, errMsg 
 	user := model.IdentityFromContext(r.Context())
 	tenants, err := wb.ListTenants.Do(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), statusFor(err))
 		return
 	}
 	views := make([]tenantView, 0, len(tenants))

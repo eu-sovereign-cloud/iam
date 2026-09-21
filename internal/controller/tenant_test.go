@@ -12,7 +12,7 @@ import (
 )
 
 func TestCreateTenant_TrimsBeforeConflictCheck(t *testing.T) {
-	ctx := context.Background()
+	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
 	create := &controller.CreateTenant{Tenants: newFakeTenantStore(), Clock: fakeClock{now: time.Now()}}
 
 	_, err := create.Do(ctx, "tenant-1", "Tenant One")
@@ -26,9 +26,17 @@ func TestCreateTenant_TrimsBeforeConflictCheck(t *testing.T) {
 }
 
 func TestCreateTenant_RequiresNonBlankID(t *testing.T) {
-	ctx := context.Background()
+	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
 	create := &controller.CreateTenant{Tenants: newFakeTenantStore(), Clock: fakeClock{now: time.Now()}}
 
 	_, err := create.Do(ctx, "   ", "")
 	require.ErrorIs(t, err, model.ErrInvalid)
+}
+
+func TestCreateTenant_RequiresAdmin(t *testing.T) {
+	ctx := model.WithIdentity(context.Background(), model.User{Subject: "alice"})
+	create := &controller.CreateTenant{Tenants: newFakeTenantStore(), Clock: fakeClock{now: time.Now()}}
+
+	_, err := create.Do(ctx, "tenant-1", "Tenant One")
+	require.ErrorIs(t, err, model.ErrForbidden)
 }

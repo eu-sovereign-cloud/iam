@@ -12,7 +12,7 @@ import (
 )
 
 func TestCreateUser_TrimsBeforeConflictCheck(t *testing.T) {
-	ctx := context.Background()
+	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
 	create := &controller.CreateUser{Users: newFakeUserStore(), Clock: fakeClock{now: time.Now()}}
 
 	_, err := create.Do(ctx, "alice@example.com", "Alice", false)
@@ -23,7 +23,7 @@ func TestCreateUser_TrimsBeforeConflictCheck(t *testing.T) {
 }
 
 func TestCreateUser_RequiresNonBlankSubject(t *testing.T) {
-	ctx := context.Background()
+	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
 	create := &controller.CreateUser{Users: newFakeUserStore(), Clock: fakeClock{now: time.Now()}}
 
 	_, err := create.Do(ctx, "   ", "", false)
@@ -31,7 +31,7 @@ func TestCreateUser_RequiresNonBlankSubject(t *testing.T) {
 }
 
 func TestSetUserAdmin(t *testing.T) {
-	ctx := context.Background()
+	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
 	clock := fakeClock{now: time.Now()}
 	users := newFakeUserStore()
 	create := &controller.CreateUser{Users: users, Clock: clock}
@@ -47,7 +47,7 @@ func TestSetUserAdmin(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
-	ctx := context.Background()
+	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
 	users := newFakeUserStore()
 	create := &controller.CreateUser{Users: users, Clock: fakeClock{now: time.Now()}}
 	get := &controller.GetUser{Users: users}

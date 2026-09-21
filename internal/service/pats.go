@@ -65,17 +65,7 @@ func (s *Service) handleListPATs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleDeletePAT(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	p, err := s.GetPAT.Do(r.Context(), id)
-	if err != nil {
-		writeError(w, statusFor(err), err.Error())
-		return
-	}
-	if p.Subject != r.PathValue("subject") {
-		writeError(w, http.StatusNotFound, model.ErrNotFound.Error())
-		return
-	}
-	if err := s.RevokePAT.Do(r.Context(), id); err != nil {
+	if err := s.RevokePAT.Do(r.Context(), r.PathValue("id")); err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
 	}

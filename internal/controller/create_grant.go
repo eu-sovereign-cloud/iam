@@ -8,8 +8,7 @@ import (
 	"github.com/eu-sovereign-cloud/iam/internal/ports"
 )
 
-// CreateGrant records that a User may claim a Tenant. Callers are
-// responsible for enforcing that only admins invoke it.
+// CreateGrant records that a User may claim a Tenant. Admin-only.
 //
 // TODO(eu-sovereign-cloud/iam#future): when a Grant is created or deleted,
 // this is the place to eventually notify ecp so it can create/remove the
@@ -24,6 +23,9 @@ type CreateGrant struct {
 }
 
 func (c *CreateGrant) Do(ctx context.Context, subject, tenantID, grantedBy string) (model.Grant, error) {
+	if err := model.RequireAdmin(ctx); err != nil {
+		return model.Grant{}, err
+	}
 	subject = strings.TrimSpace(subject)
 	tenantID = strings.TrimSpace(tenantID)
 	if _, err := c.Users.GetUser(ctx, subject); err != nil {

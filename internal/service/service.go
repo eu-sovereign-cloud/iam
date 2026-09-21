@@ -1,8 +1,8 @@
 // Package service implements IAM's JSON REST API: routing, request
 // decoding/response encoding, and bearer-auth middleware that resolves a
-// PAT to its owning User and enforces admin-only vs self-service access.
-// It is the HTTP/JSON bridge to internal/controller, which holds all the
-// actual business logic (ADR 0014).
+// PAT to its owning User. It is the HTTP/JSON bridge to internal/controller,
+// which holds all the actual business logic, including authorization
+// (admin-only vs self-or-admin), (ADR 0014).
 package service
 
 import (
@@ -30,7 +30,6 @@ type Service struct {
 
 	CreatePAT    *controller.CreatePAT
 	ListUserPATs *controller.ListUserPATs
-	GetPAT       *controller.GetPAT
 	RevokePAT    *controller.RevokePAT
 }
 
@@ -39,22 +38,22 @@ type Service struct {
 func (s *Service) Router() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /api/v1/tenants", s.RequireAdmin(s.handleCreateTenant))
-	mux.HandleFunc("GET /api/v1/tenants", s.RequireAdmin(s.handleListTenants))
-	mux.HandleFunc("DELETE /api/v1/tenants/{tenantId}", s.RequireAdmin(s.handleDeleteTenant))
+	mux.HandleFunc("POST /api/v1/tenants", s.RequireAuth(s.handleCreateTenant))
+	mux.HandleFunc("GET /api/v1/tenants", s.RequireAuth(s.handleListTenants))
+	mux.HandleFunc("DELETE /api/v1/tenants/{tenantId}", s.RequireAuth(s.handleDeleteTenant))
 
-	mux.HandleFunc("POST /api/v1/users", s.RequireAdmin(s.handleCreateUser))
-	mux.HandleFunc("GET /api/v1/users", s.RequireAdmin(s.handleListUsers))
-	mux.HandleFunc("PATCH /api/v1/users/{subject}", s.RequireAdmin(s.handlePatchUser))
-	mux.HandleFunc("DELETE /api/v1/users/{subject}", s.RequireAdmin(s.handleDeleteUser))
+	mux.HandleFunc("POST /api/v1/users", s.RequireAuth(s.handleCreateUser))
+	mux.HandleFunc("GET /api/v1/users", s.RequireAuth(s.handleListUsers))
+	mux.HandleFunc("PATCH /api/v1/users/{subject}", s.RequireAuth(s.handlePatchUser))
+	mux.HandleFunc("DELETE /api/v1/users/{subject}", s.RequireAuth(s.handleDeleteUser))
 
-	mux.HandleFunc("POST /api/v1/users/{subject}/grants", s.RequireAdmin(s.handleCreateGrant))
-	mux.HandleFunc("GET /api/v1/users/{subject}/grants", s.RequireSelfOrAdmin(s.handleListGrants))
-	mux.HandleFunc("DELETE /api/v1/users/{subject}/grants/{tenantId}", s.RequireAdmin(s.handleDeleteGrant))
+	mux.HandleFunc("POST /api/v1/users/{subject}/grants", s.RequireAuth(s.handleCreateGrant))
+	mux.HandleFunc("GET /api/v1/users/{subject}/grants", s.RequireAuth(s.handleListGrants))
+	mux.HandleFunc("DELETE /api/v1/users/{subject}/grants/{tenantId}", s.RequireAuth(s.handleDeleteGrant))
 
-	mux.HandleFunc("POST /api/v1/users/{subject}/pats", s.RequireSelfOrAdmin(s.handleCreatePAT))
-	mux.HandleFunc("GET /api/v1/users/{subject}/pats", s.RequireSelfOrAdmin(s.handleListPATs))
-	mux.HandleFunc("DELETE /api/v1/users/{subject}/pats/{id}", s.RequireSelfOrAdmin(s.handleDeletePAT))
+	mux.HandleFunc("POST /api/v1/users/{subject}/pats", s.RequireAuth(s.handleCreatePAT))
+	mux.HandleFunc("GET /api/v1/users/{subject}/pats", s.RequireAuth(s.handleListPATs))
+	mux.HandleFunc("DELETE /api/v1/users/{subject}/pats/{id}", s.RequireAuth(s.handleDeletePAT))
 
 	return mux
 }

@@ -9,14 +9,16 @@ import (
 	"github.com/eu-sovereign-cloud/iam/internal/ports"
 )
 
-// CreateTenant registers a Tenant. Callers (internal/service, internal/web)
-// are responsible for enforcing that only admins invoke it.
+// CreateTenant registers a Tenant. Admin-only.
 type CreateTenant struct {
 	Tenants ports.TenantStore
 	Clock   ports.Clock
 }
 
 func (c *CreateTenant) Do(ctx context.Context, tenantID, displayName string) (model.Tenant, error) {
+	if err := model.RequireAdmin(ctx); err != nil {
+		return model.Tenant{}, err
+	}
 	tenantID = strings.TrimSpace(tenantID)
 	if tenantID == "" {
 		return model.Tenant{}, fmt.Errorf("%w: tenantId is required", model.ErrInvalid)
