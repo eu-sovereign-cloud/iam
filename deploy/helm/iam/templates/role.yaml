@@ -11,8 +11,15 @@ metadata:
   labels:
     {{- include "iam.labels" . | nindent 4 }}
 rules:
+  # configmaps needs "delete" too: RevokePAT/DeleteUser/DeleteGrant/
+  # DeleteTenant all delete the backing ConfigMap (internal/adapter/
+  # kubestore/{pats,users,grants,tenants}.go). secrets never needs delete -
+  # kubecrypt only ever get/creates the signing key (LoadOrCreate).
   - apiGroups: [""]
-    resources: ["configmaps", "secrets"]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
     verbs: ["get", "list", "create", "update"]
   - apiGroups: [""]
     resources: ["namespaces"]

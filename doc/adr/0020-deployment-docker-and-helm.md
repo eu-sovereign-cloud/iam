@@ -51,8 +51,13 @@ cluster-scoped by nature — no single namespaced `Role` can grant that.
   target — iamd has no "ready but not live" state distinct from "up at
   all" to justify two different checks.
 - **Two RBAC objects, not one**: a namespace-scoped `Role`/`RoleBinding`
-  (`configmaps`, `secrets`, and `namespaces` get/create, all evaluated
-  against `IAM_NAMESPACE`) plus a cluster-scoped `ClusterRole`/
+  (`configmaps` get/list/create/update/**delete** — `kubestore` deletes
+  the backing ConfigMap on `RevokePAT`/`DeleteUser`/`DeleteGrant`/
+  `DeleteTenant`, a real bug in an earlier draft of this chart caught by
+  `TestEndToEndHelm`'s revocation check failing with 500 in CI; `secrets`
+  only needs get/list/create/update, since `kubecrypt` never deletes the
+  signing key; and `namespaces` get/create, all evaluated against
+  `IAM_NAMESPACE`) plus a cluster-scoped `ClusterRole`/
   `ClusterRoleBinding` (`namespaces` get/create again — needed
   cluster-wide since tenant namespaces are computed, not fixed — and
   `roles`/`role-assignments.authorization.v1.secapi.cloud`). The
