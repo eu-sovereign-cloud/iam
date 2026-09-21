@@ -8,7 +8,7 @@
 // (see `make e2e` and `.github/workflows/e2e.yml`).
 //
 // See doc/adr/0011-e2e-test-against-kind.md for why this exists alongside
-// the fake-clientset integration test in internal/controller.
+// the fake-clientset integration test in internal/service.
 package e2e
 
 import (

@@ -33,6 +33,15 @@ depends on `model` and `ports`; `adapter` implements the interfaces `ports`
 declares and depends on `model`. `model` and `ports` depend on nothing else
 in the module (see ADR 0013 for why ports moved out of `service`).
 
+**Superseded in part by ADR 0014**: the roles of `internal/service` and
+`internal/controller` shown above are swapped — `controller` now holds the
+use cases described here as `service`'s job, and `service` is the JSON/HTTP
+driving adapter described here as `controller`'s job. `internal/web` is
+unaffected by that rename (it already depended on the use-case layer under
+whatever name it had). Everything else on this page — the overall folder
+set, the dependency direction, `model`/`ports` as dependency-free leaves —
+still stands.
+
 ## Consequences
 
 - Two "driving" adapters (`controller`, `web`) share the same `service`

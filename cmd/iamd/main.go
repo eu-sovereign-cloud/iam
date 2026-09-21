@@ -51,31 +51,62 @@ func run() error {
 	if err != nil {
 		return err
 	}
-
 	clock := adapter.SystemClock{}
-	userSvc := service.NewUserService(store, clock)
-	tenantSvc := service.NewTenantService(store, clock)
-	grantSvc := service.NewGrantService(store, store, store, clock)
-	patSvc := service.NewPATService(store, store, signer, clock, cfg.JWTIssuer, cfg.JWTAudience)
-	authSvc := service.NewAuthService(patSvc, store)
 
-	if rawPAT, created, err := service.EnsureBootstrapAdmin(ctx, userSvc, patSvc); err != nil {
+	// internal/controller holds all business logic: one small controller
+	// per operation, each depending only on the ports it actually needs
+	// (ADR 0014). internal/service (REST) and internal/web (HTML) are both
+	// just presentation bridges over the same controllers.
+	createTenant := controller.NewCreateTenant(store, clock)
+	listTenants := controller.NewListTenants(store)
+	deleteTenant := controller.NewDeleteTenant(store)
+
+	createUser := controller.NewCreateUser(store, clock)
+	getUser := controller.NewGetUser(store)
+	listUsers := controller.NewListUsers(store)
+	setUserAdmin := controller.NewSetUserAdmin(store)
+	deleteUser := controller.NewDeleteUser(store)
+
+	createGrant := controller.NewCreateGrant(store, store, store, clock)
+	listUserGrants := controller.NewListUserGrants(store)
+	deleteGrant := controller.NewDeleteGrant(store)
+
+	createPAT := controller.NewCreatePAT(store, store, signer, clock, cfg.JWTIssuer, cfg.JWTAudience)
+	listUserPATs := controller.NewListUserPATs(store)
+	getPAT := controller.NewGetPAT(store)
+	revokePAT := controller.NewRevokePAT(store)
+	authenticatePAT := controller.NewAuthenticatePAT(store, signer, clock)
+
+	authenticateUser := controller.NewAuthenticateUser(authenticatePAT, store)
+	ensureBootstrapAdmin := controller.NewEnsureBootstrapAdmin(listUsers, createUser, createPAT)
+
+	if rawPAT, created, err := ensureBootstrapAdmin.Do(ctx); err != nil {
 		return err
 	} else if created {
 		slog.Warn("created bootstrap admin PAT - copy it now, it will not be shown again",
-			"subject", service.BootstrapAdminSubject, "pat", rawPAT)
+			"subject", controller.BootstrapAdminSubject, "pat", rawPAT)
 	}
 
-	ctl := &controller.Controller{
-		Auth: authSvc, Users: userSvc, Tenants: tenantSvc, Grants: grantSvc, PATs: patSvc,
+	svc := &service.Service{
+		AuthenticateUser: authenticateUser,
+		CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant,
+		CreateUser: createUser, ListUsers: listUsers, SetUserAdmin: setUserAdmin, DeleteUser: deleteUser,
+		CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant,
+		CreatePAT: createPAT, ListUserPATs: listUserPATs, GetPAT: getPAT, RevokePAT: revokePAT,
 	}
-	webUI, err := web.New(authSvc, userSvc, tenantSvc, grantSvc, patSvc)
+	webUI, err := web.New(
+		authenticateUser,
+		createTenant, listTenants, deleteTenant,
+		createUser, getUser, listUsers, deleteUser,
+		createGrant, listUserGrants, deleteGrant,
+		createPAT, listUserPATs, getPAT, revokePAT,
+	)
 	if err != nil {
 		return err
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/api/", ctl.Router())
+	mux.Handle("/api/", svc.Router())
 	mux.Handle("/web/", webUI.Router())
 
 	srv := &http.Server{Addr: cfg.ListenAddr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}

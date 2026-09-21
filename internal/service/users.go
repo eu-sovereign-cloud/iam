@@ -1,4 +1,4 @@
-package controller
+package service
 
 import (
 	"net/http"
@@ -23,13 +23,13 @@ type userResponse struct {
 	CreatedAt   string `json:"createdAt"`
 }
 
-func (c *Controller) handleCreateUser(w http.ResponseWriter, r *http.Request) {
+func (s *Service) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	var req createUserRequest
 	if err := decodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	u, err := c.Users.Create(r.Context(), req.Subject, req.DisplayName, req.Admin)
+	u, err := s.CreateUser.Do(r.Context(), req.Subject, req.DisplayName, req.Admin)
 	if err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
@@ -37,8 +37,8 @@ func (c *Controller) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, userToResponse(u))
 }
 
-func (c *Controller) handleListUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := c.Users.List(r.Context())
+func (s *Service) handleListUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := s.ListUsers.Do(r.Context())
 	if err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
@@ -50,13 +50,13 @@ func (c *Controller) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-func (c *Controller) handlePatchUser(w http.ResponseWriter, r *http.Request) {
+func (s *Service) handlePatchUser(w http.ResponseWriter, r *http.Request) {
 	var req patchUserRequest
 	if err := decodeJSON(r, &req); err != nil || req.Admin == nil {
 		writeError(w, http.StatusBadRequest, "body must set \"admin\"")
 		return
 	}
-	u, err := c.Users.SetAdmin(r.Context(), r.PathValue("subject"), *req.Admin)
+	u, err := s.SetUserAdmin.Do(r.Context(), r.PathValue("subject"), *req.Admin)
 	if err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
@@ -64,8 +64,8 @@ func (c *Controller) handlePatchUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, userToResponse(u))
 }
 
-func (c *Controller) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
-	if err := c.Users.Delete(r.Context(), r.PathValue("subject")); err != nil {
+func (s *Service) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
+	if err := s.DeleteUser.Do(r.Context(), r.PathValue("subject")); err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
 	}

@@ -10,7 +10,7 @@ import (
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/eu-sovereign-cloud/iam/internal/adapter"
-	"github.com/eu-sovereign-cloud/iam/internal/service"
+	"github.com/eu-sovereign-cloud/iam/internal/controller"
 	"github.com/eu-sovereign-cloud/iam/internal/web"
 )
 
@@ -21,20 +21,41 @@ func TestWebRoutesRenderWithoutError(t *testing.T) {
 	require.NoError(t, store.Load(ctx))
 
 	clock := adapter.SystemClock{}
-	userSvc := service.NewUserService(store, clock)
-	tenantSvc := service.NewTenantService(store, clock)
-	grantSvc := service.NewGrantService(store, store, store, clock)
+	createUser := controller.NewCreateUser(store, clock)
+	getUser := controller.NewGetUser(store)
+	listUsers := controller.NewListUsers(store)
+	deleteUser := controller.NewDeleteUser(store)
+
+	createTenant := controller.NewCreateTenant(store, clock)
+	listTenants := controller.NewListTenants(store)
+	deleteTenant := controller.NewDeleteTenant(store)
+
+	createGrant := controller.NewCreateGrant(store, store, store, clock)
+	listUserGrants := controller.NewListUserGrants(store)
+	deleteGrant := controller.NewDeleteGrant(store)
+
 	signer, err := adapter.LoadOrCreateSigner(ctx, client, "iam-system")
 	require.NoError(t, err)
-	patSvc := service.NewPATService(store, store, signer, clock, "https://iam.example.com", "ecp-gateway")
-	authSvc := service.NewAuthService(patSvc, store)
+	createPAT := controller.NewCreatePAT(store, store, signer, clock, "https://iam.example.com", "ecp-gateway")
+	listUserPATs := controller.NewListUserPATs(store)
+	getPAT := controller.NewGetPAT(store)
+	revokePAT := controller.NewRevokePAT(store)
 
-	admin, err := userSvc.Create(ctx, "admin@example.com", "Admin", true)
+	authenticatePAT := controller.NewAuthenticatePAT(store, signer, clock)
+	authenticateUser := controller.NewAuthenticateUser(authenticatePAT, store)
+
+	admin, err := createUser.Do(ctx, "admin@example.com", "Admin", true)
 	require.NoError(t, err)
-	_, adminPAT, err := patSvc.Create(ctx, admin.Subject, "bootstrap", nil, 0)
+	_, adminPAT, err := createPAT.Do(ctx, admin.Subject, "bootstrap", nil, 0)
 	require.NoError(t, err)
 
-	wb, err := web.New(authSvc, userSvc, tenantSvc, grantSvc, patSvc)
+	wb, err := web.New(
+		authenticateUser,
+		createTenant, listTenants, deleteTenant,
+		createUser, getUser, listUsers, deleteUser,
+		createGrant, listUserGrants, deleteGrant,
+		createPAT, listUserPATs, getPAT, revokePAT,
+	)
 	require.NoError(t, err)
 	mux := wb.Router()
 

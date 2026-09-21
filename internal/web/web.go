@@ -9,7 +9,7 @@ import (
 	"io/fs"
 	"net/http"
 
-	"github.com/eu-sovereign-cloud/iam/internal/service"
+	"github.com/eu-sovereign-cloud/iam/internal/controller"
 )
 
 //go:embed templates/*.html
@@ -20,25 +20,52 @@ var staticFS embed.FS
 
 const cookieName = "iam_pat"
 
-// Web wires the HTML handlers to the service layer. Authentication is
+// Web wires the HTML handlers to the controller layer. Authentication is
 // cookie-based: the cookie value *is* the bearer PAT (ADR: no server-side
 // session store, consistent with the k8s-only storage constraint).
 type Web struct {
-	Auth    *service.AuthService
-	Users   *service.UserService
-	Tenants *service.TenantService
-	Grants  *service.GrantService
-	PATs    *service.PATService
+	AuthenticateUser *controller.AuthenticateUser
+
+	CreateTenant *controller.CreateTenant
+	ListTenants  *controller.ListTenants
+	DeleteTenant *controller.DeleteTenant
+
+	CreateUser *controller.CreateUser
+	GetUser    *controller.GetUser
+	ListUsers  *controller.ListUsers
+	DeleteUser *controller.DeleteUser
+
+	CreateGrant    *controller.CreateGrant
+	ListUserGrants *controller.ListUserGrants
+	DeleteGrant    *controller.DeleteGrant
+
+	CreatePAT    *controller.CreatePAT
+	ListUserPATs *controller.ListUserPATs
+	GetPAT       *controller.GetPAT
+	RevokePAT    *controller.RevokePAT
 
 	tmpl *template.Template
 }
 
-func New(auth *service.AuthService, users *service.UserService, tenants *service.TenantService, grants *service.GrantService, pats *service.PATService) (*Web, error) {
+func New(
+	authenticateUser *controller.AuthenticateUser,
+	createTenant *controller.CreateTenant, listTenants *controller.ListTenants, deleteTenant *controller.DeleteTenant,
+	createUser *controller.CreateUser, getUser *controller.GetUser, listUsers *controller.ListUsers, deleteUser *controller.DeleteUser,
+	createGrant *controller.CreateGrant, listUserGrants *controller.ListUserGrants, deleteGrant *controller.DeleteGrant,
+	createPAT *controller.CreatePAT, listUserPATs *controller.ListUserPATs, getPAT *controller.GetPAT, revokePAT *controller.RevokePAT,
+) (*Web, error) {
 	tmpl, err := template.ParseFS(templateFS, "templates/*.html")
 	if err != nil {
 		return nil, err
 	}
-	return &Web{Auth: auth, Users: users, Tenants: tenants, Grants: grants, PATs: pats, tmpl: tmpl}, nil
+	return &Web{
+		AuthenticateUser: authenticateUser,
+		CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant,
+		CreateUser: createUser, GetUser: getUser, ListUsers: listUsers, DeleteUser: deleteUser,
+		CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant,
+		CreatePAT: createPAT, ListUserPATs: listUserPATs, GetPAT: getPAT, RevokePAT: revokePAT,
+		tmpl: tmpl,
+	}, nil
 }
 
 // Router builds the web UI mux.

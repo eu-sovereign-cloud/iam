@@ -3,6 +3,8 @@ package web
 import (
 	"net/http"
 	"time"
+
+	"github.com/eu-sovereign-cloud/iam/internal/model"
 )
 
 type patView struct {
@@ -30,8 +32,8 @@ func formatExpiry(t time.Time) string {
 }
 
 func (wb *Web) renderPATsPage(w http.ResponseWriter, r *http.Request, newSecret, errMsg string) {
-	user := identityFromContext(r.Context())
-	pats, err := wb.PATs.ListBySubject(r.Context(), user.Subject)
+	user := model.IdentityFromContext(r.Context())
+	pats, err := wb.ListUserPATs.Do(r.Context(), user.Subject)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -56,7 +58,7 @@ func parseTTL(r *http.Request) (time.Duration, error) {
 }
 
 func (wb *Web) handlePATsCreate(w http.ResponseWriter, r *http.Request) {
-	user := identityFromContext(r.Context())
+	user := model.IdentityFromContext(r.Context())
 	if err := r.ParseForm(); err != nil {
 		wb.renderPATsPage(w, r, "", "That submission did not come through. Try again.")
 		return
@@ -66,7 +68,7 @@ func (wb *Web) handlePATsCreate(w http.ResponseWriter, r *http.Request) {
 		wb.renderPATsPage(w, r, "", "Expiry must look like a duration, e.g. 720h.")
 		return
 	}
-	_, raw, err := wb.PATs.Create(r.Context(), user.Subject, r.FormValue("name"), nil, ttl)
+	_, raw, err := wb.CreatePAT.Do(r.Context(), user.Subject, r.FormValue("name"), nil, ttl)
 	if err != nil {
 		wb.renderPATsPage(w, r, "", err.Error())
 		return
@@ -75,14 +77,14 @@ func (wb *Web) handlePATsCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wb *Web) handlePATsRevoke(w http.ResponseWriter, r *http.Request) {
-	user := identityFromContext(r.Context())
+	user := model.IdentityFromContext(r.Context())
 	id := r.PathValue("id")
-	p, err := wb.PATs.Get(r.Context(), id)
+	p, err := wb.GetPAT.Do(r.Context(), id)
 	if err != nil || p.Subject != user.Subject {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	if err := wb.PATs.Revoke(r.Context(), id); err != nil {
+	if err := wb.RevokePAT.Do(r.Context(), id); err != nil {
 		wb.renderPATsPage(w, r, "", err.Error())
 		return
 	}

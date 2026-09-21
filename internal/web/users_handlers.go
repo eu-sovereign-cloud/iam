@@ -1,6 +1,10 @@
 package web
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/eu-sovereign-cloud/iam/internal/model"
+)
 
 type grantView struct {
 	Subject  string
@@ -19,9 +23,9 @@ func (wb *Web) handleUsersPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wb *Web) renderUsersPage(w http.ResponseWriter, r *http.Request, errMsg string) {
-	caller := identityFromContext(r.Context())
+	caller := model.IdentityFromContext(r.Context())
 
-	users, err := wb.Users.List(r.Context())
+	users, err := wb.ListUsers.Do(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -45,7 +49,7 @@ func (wb *Web) handleUsersCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	admin := r.FormValue("admin") == "true"
-	if _, err := wb.Users.Create(r.Context(), r.FormValue("subject"), r.FormValue("displayName"), admin); err != nil {
+	if _, err := wb.CreateUser.Do(r.Context(), r.FormValue("subject"), r.FormValue("displayName"), admin); err != nil {
 		wb.renderUsersPage(w, r, err.Error())
 		return
 	}
@@ -57,15 +61,15 @@ func (wb *Web) handleUserDetailPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wb *Web) renderUserDetailPage(w http.ResponseWriter, r *http.Request, subject, newSecret, errMsg string) {
-	caller := identityFromContext(r.Context())
+	caller := model.IdentityFromContext(r.Context())
 
-	user, err := wb.Users.Get(r.Context(), subject)
+	user, err := wb.GetUser.Do(r.Context(), subject)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
 
-	grants, err := wb.Grants.ListBySubject(r.Context(), subject)
+	grants, err := wb.ListUserGrants.Do(r.Context(), subject)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -75,7 +79,7 @@ func (wb *Web) renderUserDetailPage(w http.ResponseWriter, r *http.Request, subj
 		grantViews = append(grantViews, grantView{Subject: g.Subject, TenantID: g.TenantID})
 	}
 
-	tenants, err := wb.Tenants.List(r.Context())
+	tenants, err := wb.ListTenants.Do(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -85,7 +89,7 @@ func (wb *Web) renderUserDetailPage(w http.ResponseWriter, r *http.Request, subj
 		tenantViews = append(tenantViews, tenantView{TenantID: t.TenantID, DisplayName: t.DisplayName})
 	}
 
-	pats, err := wb.PATs.ListBySubject(r.Context(), subject)
+	pats, err := wb.ListUserPATs.Do(r.Context(), subject)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -121,7 +125,7 @@ func (wb *Web) handleUserPATsCreate(w http.ResponseWriter, r *http.Request) {
 		wb.renderUserDetailPage(w, r, subject, "", "Expiry must look like a duration, e.g. 720h.")
 		return
 	}
-	_, raw, err := wb.PATs.Create(r.Context(), subject, r.FormValue("name"), nil, ttl)
+	_, raw, err := wb.CreatePAT.Do(r.Context(), subject, r.FormValue("name"), nil, ttl)
 	if err != nil {
 		wb.renderUserDetailPage(w, r, subject, "", err.Error())
 		return
@@ -132,12 +136,12 @@ func (wb *Web) handleUserPATsCreate(w http.ResponseWriter, r *http.Request) {
 func (wb *Web) handleUserPATsRevoke(w http.ResponseWriter, r *http.Request) {
 	subject := r.PathValue("subject")
 	id := r.PathValue("id")
-	p, err := wb.PATs.Get(r.Context(), id)
+	p, err := wb.GetPAT.Do(r.Context(), id)
 	if err != nil || p.Subject != subject {
 		http.NotFound(w, r)
 		return
 	}
-	if err := wb.PATs.Revoke(r.Context(), id); err != nil {
+	if err := wb.RevokePAT.Do(r.Context(), id); err != nil {
 		wb.renderUserDetailPage(w, r, subject, "", err.Error())
 		return
 	}
@@ -146,7 +150,7 @@ func (wb *Web) handleUserPATsRevoke(w http.ResponseWriter, r *http.Request) {
 
 func (wb *Web) handleUsersDelete(w http.ResponseWriter, r *http.Request) {
 	subject := r.PathValue("subject")
-	if err := wb.Users.Delete(r.Context(), subject); err != nil {
+	if err := wb.DeleteUser.Do(r.Context(), subject); err != nil {
 		wb.renderUserDetailPage(w, r, subject, "", err.Error())
 		return
 	}
@@ -159,8 +163,8 @@ func (wb *Web) handleUsersGrant(w http.ResponseWriter, r *http.Request) {
 		wb.renderUserDetailPage(w, r, subject, "", "That submission did not come through. Try again.")
 		return
 	}
-	caller := identityFromContext(r.Context())
-	if _, err := wb.Grants.Create(r.Context(), subject, r.FormValue("tenantId"), caller.Subject); err != nil {
+	caller := model.IdentityFromContext(r.Context())
+	if _, err := wb.CreateGrant.Do(r.Context(), subject, r.FormValue("tenantId"), caller.Subject); err != nil {
 		wb.renderUserDetailPage(w, r, subject, "", err.Error())
 		return
 	}
@@ -169,7 +173,7 @@ func (wb *Web) handleUsersGrant(w http.ResponseWriter, r *http.Request) {
 
 func (wb *Web) handleUsersRevokeGrant(w http.ResponseWriter, r *http.Request) {
 	subject := r.PathValue("subject")
-	if err := wb.Grants.Delete(r.Context(), subject, r.PathValue("tenantId")); err != nil {
+	if err := wb.DeleteGrant.Do(r.Context(), subject, r.PathValue("tenantId")); err != nil {
 		wb.renderUserDetailPage(w, r, subject, "", err.Error())
 		return
 	}

@@ -1,29 +1,17 @@
 package web
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 )
-
-type identityContextKey struct{}
-
-func withIdentity(ctx context.Context, u model.User) context.Context {
-	return context.WithValue(ctx, identityContextKey{}, u)
-}
-
-func identityFromContext(ctx context.Context) model.User {
-	u, _ := ctx.Value(identityContextKey{}).(model.User)
-	return u
-}
 
 func (wb *Web) authenticateRequest(r *http.Request) (model.User, bool) {
 	cookie, err := r.Cookie(cookieName)
 	if err != nil || cookie.Value == "" {
 		return model.User{}, false
 	}
-	user, err := wb.Auth.Authenticate(r.Context(), cookie.Value)
+	user, err := wb.AuthenticateUser.Do(r.Context(), cookie.Value)
 	if err != nil {
 		return model.User{}, false
 	}
@@ -37,13 +25,13 @@ func (wb *Web) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 			http.Redirect(w, r, "/web/login", http.StatusSeeOther)
 			return
 		}
-		next(w, r.WithContext(withIdentity(r.Context(), user)))
+		next(w, r.WithContext(model.WithIdentity(r.Context(), user)))
 	}
 }
 
 func (wb *Web) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	return wb.requireAuth(func(w http.ResponseWriter, r *http.Request) {
-		if !identityFromContext(r.Context()).Admin {
+		if !model.IdentityFromContext(r.Context()).Admin {
 			http.Error(w, "admin privileges required", http.StatusForbidden)
 			return
 		}
@@ -69,7 +57,7 @@ func (wb *Web) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pat := r.FormValue("pat")
-	if _, err := wb.Auth.Authenticate(r.Context(), pat); err != nil {
+	if _, err := wb.AuthenticateUser.Do(r.Context(), pat); err != nil {
 		wb.render(w, "login.html", map[string]any{"Error": "That token is not valid, or it has been revoked."})
 		return
 	}

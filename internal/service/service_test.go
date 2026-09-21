@@ -1,4 +1,4 @@
-package controller_test
+package service_test
 
 import (
 	"bytes"
@@ -21,16 +21,14 @@ import (
 var jwtParser = jwt.NewParser()
 
 // testStack wires a full, in-process instance of the service against a
-// fake Kubernetes clientset (no real cluster needed) so controller tests
+// fake Kubernetes clientset (no real cluster needed) so these tests
 // exercise real routing, real auth middleware and real business logic —
 // only the Kubernetes API itself is faked.
 type testStack struct {
-	ctl       *controller.Controller
-	adminPAT  string
-	patSvc    *service.PATService
-	userSvc   *service.UserService
-	tenantSvc *service.TenantService
-	grantSvc  *service.GrantService
+	svc        *service.Service
+	adminPAT   string
+	createUser *controller.CreateUser
+	createPAT  *controller.CreatePAT
 }
 
 func newTestStack(t *testing.T) *testStack {
@@ -45,22 +43,44 @@ func newTestStack(t *testing.T) *testStack {
 	require.NoError(t, err)
 
 	clock := adapter.SystemClock{}
-	userSvc := service.NewUserService(store, clock)
-	tenantSvc := service.NewTenantService(store, clock)
-	grantSvc := service.NewGrantService(store, store, store, clock)
-	patSvc := service.NewPATService(store, store, signer, clock, "https://iam.example.com", "ecp-gateway")
-	authSvc := service.NewAuthService(patSvc, store)
 
-	admin, err := userSvc.Create(ctx, "admin@example.com", "Admin", true)
+	createTenant := controller.NewCreateTenant(store, clock)
+	listTenants := controller.NewListTenants(store)
+	deleteTenant := controller.NewDeleteTenant(store)
+
+	createUser := controller.NewCreateUser(store, clock)
+	listUsers := controller.NewListUsers(store)
+	setUserAdmin := controller.NewSetUserAdmin(store)
+	deleteUser := controller.NewDeleteUser(store)
+
+	createGrant := controller.NewCreateGrant(store, store, store, clock)
+	listUserGrants := controller.NewListUserGrants(store)
+	deleteGrant := controller.NewDeleteGrant(store)
+
+	createPAT := controller.NewCreatePAT(store, store, signer, clock, "https://iam.example.com", "ecp-gateway")
+	listUserPATs := controller.NewListUserPATs(store)
+	getPAT := controller.NewGetPAT(store)
+	revokePAT := controller.NewRevokePAT(store)
+
+	authenticatePAT := controller.NewAuthenticatePAT(store, signer, clock)
+	authenticateUser := controller.NewAuthenticateUser(authenticatePAT, store)
+
+	admin, err := createUser.Do(ctx, "admin@example.com", "Admin", true)
 	require.NoError(t, err)
-	_, adminPAT, err := patSvc.Create(ctx, admin.Subject, "bootstrap", nil, 0)
+	_, adminPAT, err := createPAT.Do(ctx, admin.Subject, "bootstrap", nil, 0)
 	require.NoError(t, err)
 
 	return &testStack{
-		ctl: &controller.Controller{
-			Auth: authSvc, Users: userSvc, Tenants: tenantSvc, Grants: grantSvc, PATs: patSvc,
+		svc: &service.Service{
+			AuthenticateUser: authenticateUser,
+			CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant,
+			CreateUser: createUser, ListUsers: listUsers, SetUserAdmin: setUserAdmin, DeleteUser: deleteUser,
+			CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant,
+			CreatePAT: createPAT, ListUserPATs: listUserPATs, GetPAT: getPAT, RevokePAT: revokePAT,
 		},
-		adminPAT: adminPAT, patSvc: patSvc, userSvc: userSvc, tenantSvc: tenantSvc, grantSvc: grantSvc,
+		adminPAT:   adminPAT,
+		createUser: createUser,
+		createPAT:  createPAT,
 	}
 }
 
@@ -81,12 +101,12 @@ func doJSON(t *testing.T, mux http.Handler, method, path, bearer string, body an
 
 func TestEndToEnd_CreateUserGrantIssuePATRevoke(t *testing.T) {
 	stack := newTestStack(t)
-	mux := stack.ctl.Router()
+	mux := stack.svc.Router()
 
 	// Non-admin cannot create tenants.
-	nonAdmin, err := stack.userSvc.Create(context.Background(), "bob@example.com", "Bob", false)
+	nonAdmin, err := stack.createUser.Do(context.Background(), "bob@example.com", "Bob", false)
 	require.NoError(t, err)
-	_, bobPAT, err := stack.patSvc.Create(context.Background(), nonAdmin.Subject, "bob-pat", nil, 0)
+	_, bobPAT, err := stack.createPAT.Do(context.Background(), nonAdmin.Subject, "bob-pat", nil, 0)
 	require.NoError(t, err)
 
 	rec := doJSON(t, mux, http.MethodPost, "/api/v1/tenants", bobPAT, map[string]string{"tenantId": "tenant-1"})

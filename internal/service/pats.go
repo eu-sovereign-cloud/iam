@@ -1,4 +1,4 @@
-package controller
+package service
 
 import (
 	"net/http"
@@ -27,7 +27,7 @@ type createPATResponse struct {
 	Secret string `json:"secret"`
 }
 
-func (c *Controller) handleCreatePAT(w http.ResponseWriter, r *http.Request) {
+func (s *Service) handleCreatePAT(w http.ResponseWriter, r *http.Request) {
 	var req createPATRequest
 	if err := decodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -43,7 +43,7 @@ func (c *Controller) handleCreatePAT(w http.ResponseWriter, r *http.Request) {
 		ttl = parsed
 	}
 
-	p, raw, err := c.PATs.Create(r.Context(), r.PathValue("subject"), req.Name, req.Scope, ttl)
+	p, raw, err := s.CreatePAT.Do(r.Context(), r.PathValue("subject"), req.Name, req.Scope, ttl)
 	if err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
@@ -51,8 +51,8 @@ func (c *Controller) handleCreatePAT(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, createPATResponse{patResponse: patToResponse(p), Secret: raw})
 }
 
-func (c *Controller) handleListPATs(w http.ResponseWriter, r *http.Request) {
-	pats, err := c.PATs.ListBySubject(r.Context(), r.PathValue("subject"))
+func (s *Service) handleListPATs(w http.ResponseWriter, r *http.Request) {
+	pats, err := s.ListUserPATs.Do(r.Context(), r.PathValue("subject"))
 	if err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
@@ -64,9 +64,9 @@ func (c *Controller) handleListPATs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-func (c *Controller) handleDeletePAT(w http.ResponseWriter, r *http.Request) {
+func (s *Service) handleDeletePAT(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	p, err := c.PATs.Get(r.Context(), id)
+	p, err := s.GetPAT.Do(r.Context(), id)
 	if err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
@@ -75,7 +75,7 @@ func (c *Controller) handleDeletePAT(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, model.ErrNotFound.Error())
 		return
 	}
-	if err := c.PATs.Revoke(r.Context(), id); err != nil {
+	if err := s.RevokePAT.Do(r.Context(), id); err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
 	}

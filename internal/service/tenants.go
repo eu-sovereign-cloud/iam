@@ -1,4 +1,4 @@
-package controller
+package service
 
 import "net/http"
 
@@ -13,13 +13,13 @@ type tenantResponse struct {
 	CreatedAt   string `json:"createdAt"`
 }
 
-func (c *Controller) handleCreateTenant(w http.ResponseWriter, r *http.Request) {
+func (s *Service) handleCreateTenant(w http.ResponseWriter, r *http.Request) {
 	var req tenantRequest
 	if err := decodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	t, err := c.Tenants.Create(r.Context(), req.TenantID, req.DisplayName)
+	t, err := s.CreateTenant.Do(r.Context(), req.TenantID, req.DisplayName)
 	if err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
@@ -29,8 +29,8 @@ func (c *Controller) handleCreateTenant(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-func (c *Controller) handleListTenants(w http.ResponseWriter, r *http.Request) {
-	tenants, err := c.Tenants.List(r.Context())
+func (s *Service) handleListTenants(w http.ResponseWriter, r *http.Request) {
+	tenants, err := s.ListTenants.Do(r.Context())
 	if err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
@@ -42,8 +42,8 @@ func (c *Controller) handleListTenants(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-func (c *Controller) handleDeleteTenant(w http.ResponseWriter, r *http.Request) {
-	if err := c.Tenants.Delete(r.Context(), r.PathValue("tenantId")); err != nil {
+func (s *Service) handleDeleteTenant(w http.ResponseWriter, r *http.Request) {
+	if err := s.DeleteTenant.Do(r.Context(), r.PathValue("tenantId")); err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
 	}

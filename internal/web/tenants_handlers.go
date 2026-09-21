@@ -1,6 +1,10 @@
 package web
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/eu-sovereign-cloud/iam/internal/model"
+)
 
 type tenantView struct {
 	TenantID    string
@@ -13,8 +17,8 @@ func (wb *Web) handleTenantsPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wb *Web) renderTenantsPage(w http.ResponseWriter, r *http.Request, errMsg string) {
-	user := identityFromContext(r.Context())
-	tenants, err := wb.Tenants.List(r.Context())
+	user := model.IdentityFromContext(r.Context())
+	tenants, err := wb.ListTenants.Do(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -31,7 +35,7 @@ func (wb *Web) handleTenantsCreate(w http.ResponseWriter, r *http.Request) {
 		wb.renderTenantsPage(w, r, "That submission did not come through. Try again.")
 		return
 	}
-	if _, err := wb.Tenants.Create(r.Context(), r.FormValue("tenantId"), r.FormValue("displayName")); err != nil {
+	if _, err := wb.CreateTenant.Do(r.Context(), r.FormValue("tenantId"), r.FormValue("displayName")); err != nil {
 		wb.renderTenantsPage(w, r, err.Error())
 		return
 	}
@@ -39,7 +43,7 @@ func (wb *Web) handleTenantsCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wb *Web) handleTenantsDelete(w http.ResponseWriter, r *http.Request) {
-	if err := wb.Tenants.Delete(r.Context(), r.PathValue("tenantId")); err != nil {
+	if err := wb.DeleteTenant.Do(r.Context(), r.PathValue("tenantId")); err != nil {
 		wb.renderTenantsPage(w, r, err.Error())
 		return
 	}

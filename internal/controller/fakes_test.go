@@ -1,4 +1,4 @@
-package service_test
+package controller_test
 
 import (
 	"context"
@@ -12,10 +12,10 @@ import (
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 )
 
-// In-memory fakes for the ports service_test needs. Kept intentionally
-// dumb (no k8s involved) so service-layer tests exercise only business
-// logic; the real Kubernetes-backed implementation is covered by
-// internal/adapter's own tests.
+// In-memory fakes for the ports controller_test needs. Kept intentionally
+// dumb (no k8s involved) so these tests exercise only business logic; the
+// real Kubernetes-backed implementation is covered by internal/adapter's
+// own tests.
 
 type fakeClock struct{ now time.Time }
 
@@ -216,10 +216,10 @@ func (f *fakePATStore) DeletePAT(_ context.Context, id string) error {
 }
 
 // fakeSigner round-trips model.Claims through JSON+base64 instead of real
-// ES256 signing/verification — enough to exercise PATService/AuthService's
+// ES256 signing/verification — enough to exercise CreatePAT/AuthenticatePAT's
 // orchestration logic (sign at creation, verify at authentication) without
-// needing real crypto in service-level tests. The real ES256 Sign/Verify
-// path is covered by internal/adapter's own tests against the real Signer.
+// needing real crypto in these tests. The real ES256 Sign/Verify path is
+// covered by internal/adapter's own tests against the real Signer.
 type fakeSigner struct{}
 
 func (fakeSigner) Sign(claims model.Claims) (string, error) {
@@ -243,7 +243,7 @@ func (fakeSigner) Verify(token string) (model.Claims, error) {
 	if err := json.Unmarshal(raw, &claims); err != nil {
 		return model.Claims{}, err
 	}
-	// Expiry is deliberately not checked here: PATService.Authenticate's own
+	// Expiry is deliberately not checked here: AuthenticatePAT's own
 	// pat.Expired(clock.Now()) check (against the injected, test-controlled
 	// Clock) is what tests rely on for expiry behavior, not wall-clock time.
 	return claims, nil

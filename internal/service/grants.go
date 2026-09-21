@@ -1,6 +1,10 @@
-package controller
+package service
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/eu-sovereign-cloud/iam/internal/model"
+)
 
 type createGrantRequest struct {
 	TenantID string `json:"tenantId"`
@@ -13,14 +17,14 @@ type grantResponse struct {
 	GrantedBy string `json:"grantedBy"`
 }
 
-func (c *Controller) handleCreateGrant(w http.ResponseWriter, r *http.Request) {
+func (s *Service) handleCreateGrant(w http.ResponseWriter, r *http.Request) {
 	var req createGrantRequest
 	if err := decodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	grantedBy := identityFromContext(r.Context()).Subject
-	g, err := c.Grants.Create(r.Context(), r.PathValue("subject"), req.TenantID, grantedBy)
+	grantedBy := model.IdentityFromContext(r.Context()).Subject
+	g, err := s.CreateGrant.Do(r.Context(), r.PathValue("subject"), req.TenantID, grantedBy)
 	if err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
@@ -30,8 +34,8 @@ func (c *Controller) handleCreateGrant(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (c *Controller) handleListGrants(w http.ResponseWriter, r *http.Request) {
-	grants, err := c.Grants.ListBySubject(r.Context(), r.PathValue("subject"))
+func (s *Service) handleListGrants(w http.ResponseWriter, r *http.Request) {
+	grants, err := s.ListUserGrants.Do(r.Context(), r.PathValue("subject"))
 	if err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
@@ -43,8 +47,8 @@ func (c *Controller) handleListGrants(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-func (c *Controller) handleDeleteGrant(w http.ResponseWriter, r *http.Request) {
-	if err := c.Grants.Delete(r.Context(), r.PathValue("subject"), r.PathValue("tenantId")); err != nil {
+func (s *Service) handleDeleteGrant(w http.ResponseWriter, r *http.Request) {
+	if err := s.DeleteGrant.Do(r.Context(), r.PathValue("subject"), r.PathValue("tenantId")); err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return
 	}

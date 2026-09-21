@@ -6,6 +6,13 @@ Accepted. Reverses the specific choice ADR 0002 made to keep ports inside
 `service`; everything else in ADR 0002 (the overall hexagonal layering,
 dependency direction) still stands.
 
+Note: ADR 0014 later swaps the *roles* of `internal/service` and
+`internal/controller` (controller becomes the use-case layer, service
+becomes the JSON/HTTP driving adapter). Every reference to `service` below
+as "the use-case layer that owns ports" should be read as `controller`
+post-0014 — the ports package itself, its location, and its one-file-per-port
+shape are unaffected by that rename.
+
 ## Context
 
 Ports (`UserStore`, `TenantStore`, `GrantStore`, `PATStore`, `Signer`,
