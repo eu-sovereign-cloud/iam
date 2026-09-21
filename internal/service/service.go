@@ -14,6 +14,13 @@ import (
 // Service wires the REST handlers to the controller layer.
 type Service struct {
 	AuthenticateUser *controller.AuthenticateUser
+	AuthenticatePAT  *controller.AuthenticatePAT
+	GetJWKS          *controller.GetJWKS
+
+	// Issuer is IAM's externally-reachable base URL (IAM_JWT_ISSUER) — the
+	// same value minted into every JWT's iss claim, and the base for the
+	// discovery document's jwks_uri/userinfo_endpoint (issue #2, ADR 0019).
+	Issuer string
 
 	CreateTenant *controller.CreateTenant
 	ListTenants  *controller.ListTenants

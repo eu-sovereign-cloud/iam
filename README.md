@@ -23,21 +23,23 @@ Creating a Tenant or Grant also provisions the corresponding `Role`/
 `RoleAssignment` objects directly in ecp's Kubernetes cluster (a
 backchannel, not ecp's REST API — see ADR 0018); an admin-only
 `POST /api/v1/tenants/{tenantId}/repair` re-applies that RBAC state from
-IAM's own records, overwriting any drift. Full IdP/SSO is out of scope —
-see issue #2 for the follow-on OIDC discovery/JWKS/`/userinfo` work, which
-is also what will eventually let `ecp` check whether a given PAT has been
-revoked (see ADR 0012's accepted revocation-gap trade-off).
+IAM's own records, overwriting any drift. iam also exposes OIDC discovery,
+JWKS, and a `/userinfo` endpoint (see ADR 0019, issue #2) so a verifier
+can validate IAM-issued JWTs fully offline and still catch a PAT revoked
+after issuance — though nothing in ecp calls these yet today (see ADR
+0019's Context). Full IdP/SSO is otherwise out of scope.
 
 ## Architecture
 
 ![iam and ecp system context](doc/architecture-context.svg)
 
 iam and ecp are separate services in the same Kubernetes cluster and
-coordinate only through the Kubernetes API today: iam writes its own state
-plus ecp's `Role`/`RoleAssignment` CRDs as a backchannel (ADR 0018), and
-ecp independently reads/writes its own resources and validates the JWTs
-iam issues. Once iam's userinfo/JWKS endpoint ships (issue #2), ecp will
-also call iam directly to check PAT revocation status.
+coordinate through the Kubernetes API: iam writes its own state plus
+ecp's `Role`/`RoleAssignment` CRDs as a backchannel (ADR 0018), and ecp
+independently reads/writes its own resources and validates the JWTs iam
+issues. iam also publishes OIDC discovery, JWKS, and `/userinfo`
+endpoints (ADR 0019) so ecp *could* call it directly to check PAT
+revocation status — ecp doesn't do that yet (see ADR 0019's Context).
 
 ![iam architecture](doc/architecture.svg)
 
@@ -118,6 +120,22 @@ Decode the `secret` (a standard JWT) to see the claims shape the ecp
 gateway expects (`sub`, `iss`, `aud`, `exp`, `tenants`, optional `scope`).
 
 A minimal web UI is also available at `/web/login` (paste a PAT to sign in).
+
+### OIDC discovery, JWKS, and `/userinfo`
+
+These three are public and unauthenticated except `/userinfo`, which
+authenticates via the PAT being checked (see ADR 0019):
+
+```sh
+curl -s localhost:8080/.well-known/openid-configuration
+curl -s localhost:8080/.well-known/jwks.json
+
+# Confirms a PAT is still live — the one thing offline JWT verification
+# alone can't see (issue #2). Uses the PAT minted above.
+PAT=eyJhbGci...
+curl -s -H "Authorization: Bearer $PAT" localhost:8080/userinfo
+# => {"sub":"alice@example.com"}
+```
 
 ## Development
 

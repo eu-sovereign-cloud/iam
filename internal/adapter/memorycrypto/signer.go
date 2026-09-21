@@ -5,6 +5,9 @@
 package memorycrypto
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -19,6 +22,22 @@ import (
 // without needing real crypto in tests. Stateless; the zero value is
 // ready to use.
 type Signer struct{}
+
+// fakeKey backs KeyID/PublicKey only — Sign/Verify never use it, since
+// this Signer doesn't do real cryptography. It exists purely so tests
+// exercising the JWKS endpoint (issue #2) have a public key to publish;
+// it carries no cryptographic meaning. Generated once at package init so
+// Signer itself can stay field-free (the zero value stays ready to use).
+var fakeKey = must(ecdsa.GenerateKey(elliptic.P256(), rand.Reader))
+
+const fakeKeyID = "memory-fake-key"
+
+func must(key *ecdsa.PrivateKey, err error) *ecdsa.PrivateKey {
+	if err != nil {
+		panic(err)
+	}
+	return key
+}
 
 func (Signer) Sign(claims model.Claims) (string, error) {
 	raw, err := json.Marshal(claims)
@@ -47,3 +66,9 @@ func (Signer) Verify(token string) (model.Claims, error) {
 	// time.
 	return claims, nil
 }
+
+// KeyID returns a fixed, arbitrary kid — see fakeKey.
+func (Signer) KeyID() string { return fakeKeyID }
+
+// PublicKey returns a fixed, arbitrary public key — see fakeKey.
+func (Signer) PublicKey() *ecdsa.PublicKey { return &fakeKey.PublicKey }
