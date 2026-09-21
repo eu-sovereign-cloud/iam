@@ -64,6 +64,21 @@ func patFromConfigMap(cm *corev1.ConfigMap) (model.PAT, error) {
 }
 
 func (s *Store) CreatePAT(ctx context.Context, p model.PAT) error {
+	s.mu.RLock()
+	if _, exists := s.pats[p.ID]; exists {
+		s.mu.RUnlock()
+		return fmt.Errorf("%w: PAT %q", model.ErrConflict, p.ID)
+	}
+	if p.Name != "" {
+		for _, existing := range s.pats {
+			if existing.Subject == p.Subject && existing.Name == p.Name {
+				s.mu.RUnlock()
+				return fmt.Errorf("%w: PAT named %q for %s", model.ErrConflict, p.Name, p.Subject)
+			}
+		}
+	}
+	s.mu.RUnlock()
+
 	cm, err := patToConfigMap(p, s.namespace)
 	if err != nil {
 		return err

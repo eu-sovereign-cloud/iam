@@ -110,6 +110,29 @@ func TestPATCRUD(t *testing.T) {
 	require.ErrorIs(t, err, model.ErrNotFound)
 }
 
+func TestPATCreate_NameConflict(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	now := time.Now().UTC().Truncate(time.Second)
+
+	first := model.PAT{ID: "pat-1", Subject: "alice@example.com", Name: "laptop", CreatedAt: now, ExpiresAt: now.Add(time.Hour)}
+	require.NoError(t, store.CreatePAT(ctx, first))
+
+	// Same subject, same name: rejected.
+	dup := model.PAT{ID: "pat-2", Subject: "alice@example.com", Name: "laptop", CreatedAt: now, ExpiresAt: now.Add(time.Hour)}
+	require.ErrorIs(t, store.CreatePAT(ctx, dup), model.ErrConflict)
+
+	// A different subject may still use the same name.
+	other := model.PAT{ID: "pat-3", Subject: "bob@example.com", Name: "laptop", CreatedAt: now, ExpiresAt: now.Add(time.Hour)}
+	require.NoError(t, store.CreatePAT(ctx, other))
+
+	// Blank names never conflict with each other.
+	blank1 := model.PAT{ID: "pat-4", Subject: "alice@example.com", CreatedAt: now, ExpiresAt: now.Add(time.Hour)}
+	blank2 := model.PAT{ID: "pat-5", Subject: "alice@example.com", CreatedAt: now, ExpiresAt: now.Add(time.Hour)}
+	require.NoError(t, store.CreatePAT(ctx, blank1))
+	require.NoError(t, store.CreatePAT(ctx, blank2))
+}
+
 func TestLoadRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	client := k8sfake.NewClientset()

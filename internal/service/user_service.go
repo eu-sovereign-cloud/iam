@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 	"github.com/eu-sovereign-cloud/iam/internal/ports"
@@ -20,12 +21,13 @@ func NewUserService(store ports.UserStore, clock ports.Clock) *UserService {
 }
 
 func (s *UserService) Create(ctx context.Context, subject, displayName string, admin bool) (model.User, error) {
+	subject = strings.TrimSpace(subject)
 	if subject == "" {
 		return model.User{}, fmt.Errorf("%w: subject is required", model.ErrInvalid)
 	}
 	u := model.User{
 		Subject:     subject,
-		DisplayName: displayName,
+		DisplayName: strings.TrimSpace(displayName),
 		Admin:       admin,
 		CreatedAt:   s.clock.Now(),
 	}

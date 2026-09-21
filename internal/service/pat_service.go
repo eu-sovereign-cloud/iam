@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -40,6 +41,8 @@ func NewPATService(store ports.PATStore, grants ports.GrantStore, signer ports.S
 // of it. The signed JWT is returned once and never persisted (ADR 0012) —
 // only its jti and bookkeeping metadata are.
 func (s *PATService) Create(ctx context.Context, subject, name string, scope *model.TokenScope, ttl time.Duration) (model.PAT, string, error) {
+	subject = strings.TrimSpace(subject)
+	name = strings.TrimSpace(name)
 	if subject == "" {
 		return model.PAT{}, "", fmt.Errorf("%w: subject is required", model.ErrInvalid)
 	}

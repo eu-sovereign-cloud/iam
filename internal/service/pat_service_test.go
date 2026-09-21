@@ -59,3 +59,28 @@ func TestPATServiceAuthenticate_UnknownToken(t *testing.T) {
 	_, err := svc.Authenticate(ctx, "not-a-real-token")
 	require.ErrorIs(t, err, model.ErrForbidden)
 }
+
+func TestPATServiceCreate_NameConflictPerSubject(t *testing.T) {
+	ctx := context.Background()
+	clock := fakeClock{now: time.Now()}
+	svc := service.NewPATService(newFakePATStore(), newFakeGrantStore(), fakeSigner{}, clock, "iss", "aud")
+
+	_, _, err := svc.Create(ctx, "alice", "laptop", nil, 0)
+	require.NoError(t, err)
+
+	// Same subject, same name (even with incidental whitespace, which must
+	// be trimmed before the conflict check — this was the exact bug
+	// report): rejected.
+	_, _, err = svc.Create(ctx, "alice", "  laptop ", nil, 0)
+	require.ErrorIs(t, err, model.ErrConflict)
+
+	// A different subject may still use the same name.
+	_, _, err = svc.Create(ctx, "bob", "laptop", nil, 0)
+	require.NoError(t, err)
+
+	// Unnamed PATs never conflict with each other.
+	_, _, err = svc.Create(ctx, "alice", "", nil, 0)
+	require.NoError(t, err)
+	_, _, err = svc.Create(ctx, "alice", "  ", nil, 0)
+	require.NoError(t, err)
+}

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 	"github.com/eu-sovereign-cloud/iam/internal/ports"
@@ -28,6 +29,8 @@ func NewGrantService(grants ports.GrantStore, users ports.UserStore, tenants por
 }
 
 func (s *GrantService) Create(ctx context.Context, subject, tenantID, grantedBy string) (model.Grant, error) {
+	subject = strings.TrimSpace(subject)
+	tenantID = strings.TrimSpace(tenantID)
 	if _, err := s.users.GetUser(ctx, subject); err != nil {
 		return model.Grant{}, err
 	}

@@ -172,6 +172,16 @@ func newFakePATStore() *fakePATStore {
 func (f *fakePATStore) CreatePAT(_ context.Context, p model.PAT) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if _, ok := f.pats[p.ID]; ok {
+		return fmt.Errorf("%w: %s", model.ErrConflict, p.ID)
+	}
+	if p.Name != "" {
+		for _, existing := range f.pats {
+			if existing.Subject == p.Subject && existing.Name == p.Name {
+				return fmt.Errorf("%w: PAT named %q for %s", model.ErrConflict, p.Name, p.Subject)
+			}
+		}
+	}
 	f.pats[p.ID] = p
 	return nil
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 	"github.com/eu-sovereign-cloud/iam/internal/ports"
@@ -20,12 +21,13 @@ func NewTenantService(store ports.TenantStore, clock ports.Clock) *TenantService
 }
 
 func (s *TenantService) Create(ctx context.Context, tenantID, displayName string) (model.Tenant, error) {
+	tenantID = strings.TrimSpace(tenantID)
 	if tenantID == "" {
 		return model.Tenant{}, fmt.Errorf("%w: tenantId is required", model.ErrInvalid)
 	}
 	t := model.Tenant{
 		TenantID:    tenantID,
-		DisplayName: displayName,
+		DisplayName: strings.TrimSpace(displayName),
 		CreatedAt:   s.clock.Now(),
 	}
 	if err := s.store.CreateTenant(ctx, t); err != nil {
