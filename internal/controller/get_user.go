@@ -9,13 +9,9 @@ import (
 
 // GetUser fetches a single User by subject.
 type GetUser struct {
-	users ports.UserStore
-}
-
-func NewGetUser(users ports.UserStore) *GetUser {
-	return &GetUser{users: users}
+	Users ports.UserStore
 }
 
 func (c *GetUser) Do(ctx context.Context, subject string) (model.User, error) {
-	return c.users.GetUser(ctx, subject)
+	return c.Users.GetUser(ctx, subject)
 }

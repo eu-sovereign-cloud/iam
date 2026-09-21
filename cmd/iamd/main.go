@@ -57,28 +57,28 @@ func run() error {
 	// per operation, each depending only on the ports it actually needs
 	// (ADR 0014). internal/service (REST) and internal/web (HTML) are both
 	// just presentation bridges over the same controllers.
-	createTenant := controller.NewCreateTenant(store, clock)
-	listTenants := controller.NewListTenants(store)
-	deleteTenant := controller.NewDeleteTenant(store)
+	createTenant := &controller.CreateTenant{Tenants: store, Clock: clock}
+	listTenants := &controller.ListTenants{Tenants: store}
+	deleteTenant := &controller.DeleteTenant{Tenants: store}
 
-	createUser := controller.NewCreateUser(store, clock)
-	getUser := controller.NewGetUser(store)
-	listUsers := controller.NewListUsers(store)
-	setUserAdmin := controller.NewSetUserAdmin(store)
-	deleteUser := controller.NewDeleteUser(store)
+	createUser := &controller.CreateUser{Users: store, Clock: clock}
+	getUser := &controller.GetUser{Users: store}
+	listUsers := &controller.ListUsers{Users: store}
+	setUserAdmin := &controller.SetUserAdmin{Users: store}
+	deleteUser := &controller.DeleteUser{Users: store}
 
-	createGrant := controller.NewCreateGrant(store, store, store, clock)
-	listUserGrants := controller.NewListUserGrants(store)
-	deleteGrant := controller.NewDeleteGrant(store)
+	createGrant := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock}
+	listUserGrants := &controller.ListUserGrants{Grants: store}
+	deleteGrant := &controller.DeleteGrant{Grants: store}
 
-	createPAT := controller.NewCreatePAT(store, store, signer, clock, cfg.JWTIssuer, cfg.JWTAudience)
-	listUserPATs := controller.NewListUserPATs(store)
-	getPAT := controller.NewGetPAT(store)
-	revokePAT := controller.NewRevokePAT(store)
-	authenticatePAT := controller.NewAuthenticatePAT(store, signer, clock)
+	createPAT := &controller.CreatePAT{PATs: store, Grants: store, Signer: signer, Clock: clock, Issuer: cfg.JWTIssuer, Audience: cfg.JWTAudience}
+	listUserPATs := &controller.ListUserPATs{PATs: store}
+	getPAT := &controller.GetPAT{PATs: store}
+	revokePAT := &controller.RevokePAT{PATs: store}
+	authenticatePAT := &controller.AuthenticatePAT{PATs: store, Signer: signer, Clock: clock}
 
-	authenticateUser := controller.NewAuthenticateUser(authenticatePAT, store)
-	ensureBootstrapAdmin := controller.NewEnsureBootstrapAdmin(listUsers, createUser, createPAT)
+	authenticateUser := &controller.AuthenticateUser{PATs: authenticatePAT, Users: store}
+	ensureBootstrapAdmin := &controller.EnsureBootstrapAdmin{ListUsers: listUsers, CreateUser: createUser, CreatePAT: createPAT}
 
 	if rawPAT, created, err := ensureBootstrapAdmin.Do(ctx); err != nil {
 		return err

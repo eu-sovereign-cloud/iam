@@ -9,13 +9,9 @@ import (
 
 // ListTenants lists all registered Tenants.
 type ListTenants struct {
-	tenants ports.TenantStore
-}
-
-func NewListTenants(tenants ports.TenantStore) *ListTenants {
-	return &ListTenants{tenants: tenants}
+	Tenants ports.TenantStore
 }
 
 func (c *ListTenants) Do(ctx context.Context) ([]model.Tenant, error) {
-	return c.tenants.ListTenants(ctx)
+	return c.Tenants.ListTenants(ctx)
 }

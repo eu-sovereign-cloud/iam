@@ -9,13 +9,9 @@ import (
 
 // GetTenant fetches a single Tenant by ID.
 type GetTenant struct {
-	tenants ports.TenantStore
-}
-
-func NewGetTenant(tenants ports.TenantStore) *GetTenant {
-	return &GetTenant{tenants: tenants}
+	Tenants ports.TenantStore
 }
 
 func (c *GetTenant) Do(ctx context.Context, tenantID string) (model.Tenant, error) {
-	return c.tenants.GetTenant(ctx, tenantID)
+	return c.Tenants.GetTenant(ctx, tenantID)
 }

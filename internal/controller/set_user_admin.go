@@ -10,20 +10,16 @@ import (
 // SetUserAdmin toggles a User's admin flag. Callers are responsible for
 // enforcing that only admins invoke it.
 type SetUserAdmin struct {
-	users ports.UserStore
-}
-
-func NewSetUserAdmin(users ports.UserStore) *SetUserAdmin {
-	return &SetUserAdmin{users: users}
+	Users ports.UserStore
 }
 
 func (c *SetUserAdmin) Do(ctx context.Context, subject string, admin bool) (model.User, error) {
-	u, err := c.users.GetUser(ctx, subject)
+	u, err := c.Users.GetUser(ctx, subject)
 	if err != nil {
 		return model.User{}, err
 	}
 	u.Admin = admin
-	if err := c.users.UpdateUser(ctx, u); err != nil {
+	if err := c.Users.UpdateUser(ctx, u); err != nil {
 		return model.User{}, err
 	}
 	return u, nil

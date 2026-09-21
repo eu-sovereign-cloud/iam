@@ -13,13 +13,9 @@ import (
 // with no callback to IAM — an explicitly accepted trade-off (ADR 0012)
 // until issue #2's /userinfo liveness check exists.
 type RevokePAT struct {
-	pats ports.PATStore
-}
-
-func NewRevokePAT(pats ports.PATStore) *RevokePAT {
-	return &RevokePAT{pats: pats}
+	PATs ports.PATStore
 }
 
 func (c *RevokePAT) Do(ctx context.Context, id string) error {
-	return c.pats.DeletePAT(ctx, id)
+	return c.PATs.DeletePAT(ctx, id)
 }

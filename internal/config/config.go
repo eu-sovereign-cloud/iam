@@ -10,12 +10,12 @@ import (
 // Config is iamd's full runtime configuration, populated from environment
 // variables (see ADR 0007). All fields have safe defaults except JWTIssuer.
 type Config struct {
-	ListenAddr     string `env:"IAM_LISTEN_ADDR" envDefault:":8080"`
-	Namespace      string `env:"IAM_NAMESPACE" envDefault:"iam-system"`
-	JWTIssuer      string `env:"IAM_JWT_ISSUER,required"`
-	JWTAudience    string `env:"IAM_JWT_AUDIENCE"`
-	KubeconfigPath string `env:"KUBECONFIG"`
-	LogLevel       string `env:"IAM_LOG_LEVEL" envDefault:"info"`
+	ListenAddr     string   `env:"IAM_LISTEN_ADDR" envDefault:":8080"`
+	Namespace      string   `env:"IAM_NAMESPACE" envDefault:"iam-system"`
+	JWTIssuer      string   `env:"IAM_JWT_ISSUER,required"`
+	JWTAudience    []string `env:"IAM_JWT_AUDIENCE" envSeparator:","`
+	KubeconfigPath string   `env:"KUBECONFIG"`
+	LogLevel       string   `env:"IAM_LOG_LEVEL" envDefault:"info"`
 }
 
 // Load reads and validates Config from the process environment.

@@ -17,17 +17,17 @@ func TestEnsureBootstrapAdmin_CreatesOnlyOnce(t *testing.T) {
 	pats := newFakePATStore()
 	grants := newFakeGrantStore()
 
-	listUsers := controller.NewListUsers(users)
-	createUser := controller.NewCreateUser(users, clock)
-	createPAT := controller.NewCreatePAT(pats, grants, fakeSigner{}, clock, "iss", "aud")
-	ensure := controller.NewEnsureBootstrapAdmin(listUsers, createUser, createPAT)
+	listUsers := &controller.ListUsers{Users: users}
+	createUser := &controller.CreateUser{Users: users, Clock: clock}
+	createPAT := &controller.CreatePAT{PATs: pats, Grants: grants, Signer: fakeSigner{}, Clock: clock, Issuer: "iss", Audience: []string{"aud"}}
+	ensure := &controller.EnsureBootstrapAdmin{ListUsers: listUsers, CreateUser: createUser, CreatePAT: createPAT}
 
 	raw, created, err := ensure.Do(ctx)
 	require.NoError(t, err)
 	require.True(t, created)
 	require.NotEmpty(t, raw)
 
-	admin, err := controller.NewGetUser(users).Do(ctx, controller.BootstrapAdminSubject)
+	admin, err := (&controller.GetUser{Users: users}).Do(ctx, controller.BootstrapAdminSubject)
 	require.NoError(t, err)
 	require.True(t, admin.Admin)
 

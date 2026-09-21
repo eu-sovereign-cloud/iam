@@ -9,13 +9,9 @@ import (
 
 // ListUserGrants lists the Tenants a subject may claim.
 type ListUserGrants struct {
-	grants ports.GrantStore
-}
-
-func NewListUserGrants(grants ports.GrantStore) *ListUserGrants {
-	return &ListUserGrants{grants: grants}
+	Grants ports.GrantStore
 }
 
 func (c *ListUserGrants) Do(ctx context.Context, subject string) ([]model.Grant, error) {
-	return c.grants.ListGrantsBySubject(ctx, subject)
+	return c.Grants.ListGrantsBySubject(ctx, subject)
 }

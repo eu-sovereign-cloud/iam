@@ -12,12 +12,8 @@ import (
 // CreateTenant registers a Tenant. Callers (internal/service, internal/web)
 // are responsible for enforcing that only admins invoke it.
 type CreateTenant struct {
-	tenants ports.TenantStore
-	clock   ports.Clock
-}
-
-func NewCreateTenant(tenants ports.TenantStore, clock ports.Clock) *CreateTenant {
-	return &CreateTenant{tenants: tenants, clock: clock}
+	Tenants ports.TenantStore
+	Clock   ports.Clock
 }
 
 func (c *CreateTenant) Do(ctx context.Context, tenantID, displayName string) (model.Tenant, error) {
@@ -28,9 +24,9 @@ func (c *CreateTenant) Do(ctx context.Context, tenantID, displayName string) (mo
 	t := model.Tenant{
 		TenantID:    tenantID,
 		DisplayName: strings.TrimSpace(displayName),
-		CreatedAt:   c.clock.Now(),
+		CreatedAt:   c.Clock.Now(),
 	}
-	if err := c.tenants.CreateTenant(ctx, t); err != nil {
+	if err := c.Tenants.CreateTenant(ctx, t); err != nil {
 		return model.Tenant{}, err
 	}
 	return t, nil

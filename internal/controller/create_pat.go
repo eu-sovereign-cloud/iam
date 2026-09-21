@@ -25,16 +25,12 @@ const noExpiryDuration = 100 * 365 * 24 * time.Hour
 // self-service: callers let a User act on their own subject regardless of
 // the admin flag, and let admins act on any subject.
 type CreatePAT struct {
-	pats     ports.PATStore
-	grants   ports.GrantStore
-	signer   ports.Signer
-	clock    ports.Clock
-	issuer   string
-	audience string
-}
-
-func NewCreatePAT(pats ports.PATStore, grants ports.GrantStore, signer ports.Signer, clock ports.Clock, issuer, audience string) *CreatePAT {
-	return &CreatePAT{pats: pats, grants: grants, signer: signer, clock: clock, issuer: issuer, audience: audience}
+	PATs     ports.PATStore
+	Grants   ports.GrantStore
+	Signer   ports.Signer
+	Clock    ports.Clock
+	Issuer   string
+	Audience []string
 }
 
 func (c *CreatePAT) Do(ctx context.Context, subject, name string, scope *model.TokenScope, ttl time.Duration) (model.PAT, string, error) {
@@ -47,7 +43,7 @@ func (c *CreatePAT) Do(ctx context.Context, subject, name string, scope *model.T
 		ttl = noExpiryDuration
 	}
 
-	grants, err := c.grants.ListGrantsBySubject(ctx, subject)
+	grants, err := c.Grants.ListGrantsBySubject(ctx, subject)
 	if err != nil {
 		return model.PAT{}, "", err
 	}
@@ -56,14 +52,14 @@ func (c *CreatePAT) Do(ctx context.Context, subject, name string, scope *model.T
 		tenants = append(tenants, g.TenantID)
 	}
 
-	now := c.clock.Now()
+	now := c.Clock.Now()
 	exp := now.Add(ttl)
 	jti := newID()
 
 	claims := model.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   subject,
-			Issuer:    c.issuer,
+			Issuer:    c.Issuer,
 			ExpiresAt: jwt.NewNumericDate(exp),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
@@ -72,11 +68,11 @@ func (c *CreatePAT) Do(ctx context.Context, subject, name string, scope *model.T
 		Scope:   scope,
 		Tenants: tenants,
 	}
-	if c.audience != "" {
-		claims.Audience = jwt.ClaimStrings{c.audience}
+	if len(c.Audience) > 0 {
+		claims.Audience = jwt.ClaimStrings(c.Audience)
 	}
 
-	signed, err := c.signer.Sign(claims)
+	signed, err := c.Signer.Sign(claims)
 	if err != nil {
 		return model.PAT{}, "", fmt.Errorf("signing PAT: %w", err)
 	}
@@ -89,7 +85,7 @@ func (c *CreatePAT) Do(ctx context.Context, subject, name string, scope *model.T
 		CreatedAt: now,
 		ExpiresAt: exp,
 	}
-	if err := c.pats.CreatePAT(ctx, p); err != nil {
+	if err := c.PATs.CreatePAT(ctx, p); err != nil {
 		return model.PAT{}, "", err
 	}
 	return p, signed, nil

@@ -19,10 +19,10 @@ func TestCreatePAT_ListRevoke(t *testing.T) {
 	require.NoError(t, grants.CreateGrant(ctx, model.Grant{Subject: "alice", TenantID: "tenant-1", GrantedAt: now}))
 
 	pats := newFakePATStore()
-	create := controller.NewCreatePAT(pats, grants, fakeSigner{}, clock, "https://iam.example.com", "ecp-gateway")
-	list := controller.NewListUserPATs(pats)
-	authenticate := controller.NewAuthenticatePAT(pats, fakeSigner{}, clock)
-	revoke := controller.NewRevokePAT(pats)
+	create := &controller.CreatePAT{PATs: pats, Grants: grants, Signer: fakeSigner{}, Clock: clock, Issuer: "https://iam.example.com", Audience: []string{"ecp-gateway"}}
+	list := &controller.ListUserPATs{PATs: pats}
+	authenticate := &controller.AuthenticatePAT{PATs: pats, Signer: fakeSigner{}, Clock: clock}
+	revoke := &controller.RevokePAT{PATs: pats}
 
 	p, raw, err := create.Do(ctx, "alice", "laptop", nil, 0)
 	require.NoError(t, err)
@@ -52,14 +52,14 @@ func TestCreatePAT_ListRevoke(t *testing.T) {
 
 func TestCreatePAT_RequiresSubject(t *testing.T) {
 	ctx := context.Background()
-	create := controller.NewCreatePAT(newFakePATStore(), newFakeGrantStore(), fakeSigner{}, fakeClock{now: time.Now()}, "iss", "aud")
+	create := &controller.CreatePAT{PATs: newFakePATStore(), Grants: newFakeGrantStore(), Signer: fakeSigner{}, Clock: fakeClock{now: time.Now()}, Issuer: "iss", Audience: []string{"aud"}}
 	_, _, err := create.Do(ctx, "", "name", nil, 0)
 	require.ErrorIs(t, err, model.ErrInvalid)
 }
 
 func TestAuthenticatePAT_UnknownToken(t *testing.T) {
 	ctx := context.Background()
-	authenticate := controller.NewAuthenticatePAT(newFakePATStore(), fakeSigner{}, fakeClock{now: time.Now()})
+	authenticate := &controller.AuthenticatePAT{PATs: newFakePATStore(), Signer: fakeSigner{}, Clock: fakeClock{now: time.Now()}}
 	_, err := authenticate.Do(ctx, "not-a-real-token")
 	require.ErrorIs(t, err, model.ErrForbidden)
 }
@@ -67,7 +67,7 @@ func TestAuthenticatePAT_UnknownToken(t *testing.T) {
 func TestCreatePAT_NameConflictPerSubject(t *testing.T) {
 	ctx := context.Background()
 	clock := fakeClock{now: time.Now()}
-	create := controller.NewCreatePAT(newFakePATStore(), newFakeGrantStore(), fakeSigner{}, clock, "iss", "aud")
+	create := &controller.CreatePAT{PATs: newFakePATStore(), Grants: newFakeGrantStore(), Signer: fakeSigner{}, Clock: clock, Issuer: "iss", Audience: []string{"aud"}}
 
 	_, _, err := create.Do(ctx, "alice", "laptop", nil, 0)
 	require.NoError(t, err)

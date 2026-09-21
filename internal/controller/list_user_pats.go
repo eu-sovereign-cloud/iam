@@ -10,13 +10,9 @@ import (
 // ListUserPATs lists a subject's PATs (metadata only, never the signed
 // JWT itself — that's only ever returned once, at creation).
 type ListUserPATs struct {
-	pats ports.PATStore
-}
-
-func NewListUserPATs(pats ports.PATStore) *ListUserPATs {
-	return &ListUserPATs{pats: pats}
+	PATs ports.PATStore
 }
 
 func (c *ListUserPATs) Do(ctx context.Context, subject string) ([]model.PAT, error) {
-	return c.pats.ListPATsBySubject(ctx, subject)
+	return c.PATs.ListPATsBySubject(ctx, subject)
 }

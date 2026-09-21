@@ -22,8 +22,9 @@ While making the swap, two more changes were folded in:
 - One controller struct per operation (`CreateTenant`, `DeleteUser`,
   `AuthenticatePAT`, ...) instead of one struct per resource with several
   methods. Each holds only the `ports.*` (and, where needed, config) its
-  own logic actually needs as constructor-injected fields — most need one
-  or two, not a resource's full dependency set. Every one is invoked via a
+  own logic actually needs, as plain exported fields set via a struct
+  literal at the call site (no `NewXxx` constructors) — most need one or
+  two, not a resource's full dependency set. Every one is invoked via a
   uniform `Do(ctx, ...) (..., error)` method.
 - `identityContextKey`/`withIdentity`/`identityFromContext` moved from the
   REST layer to `internal/model/context.go` (exported as `WithIdentity`/
@@ -81,4 +82,10 @@ While making the swap, two more changes were folded in:
 - `internal/service/service_test.go` replaces the old
   `internal/controller/controller_test.go` as the full-stack HTTP/fake-k8s
   integration test; `internal/web/web_test.go` keeps the same test bodies,
-  updated only for the new constructor/wiring shape.
+  updated only for the new struct-literal wiring shape.
+- No `NewXxx` constructor per controller: `cmd/iamd/main.go`'s wiring is
+  20 struct literals (`&controller.CreateTenant{Tenants: store, Clock:
+  clock}`, ...) rather than 20 near-identical one-line constructor calls
+  that just copied their arguments into a struct anyway — the exported
+  field names double as the call site's documentation of which port goes
+  where, which a positional constructor call couldn't provide.

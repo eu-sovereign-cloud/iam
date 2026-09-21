@@ -17,32 +17,28 @@ import (
 // IAM has no ecp credentials/access yet and the IAM-grant -> ecp-role
 // mapping isn't defined. See ADR 0008.
 type CreateGrant struct {
-	grants  ports.GrantStore
-	users   ports.UserStore
-	tenants ports.TenantStore
-	clock   ports.Clock
-}
-
-func NewCreateGrant(grants ports.GrantStore, users ports.UserStore, tenants ports.TenantStore, clock ports.Clock) *CreateGrant {
-	return &CreateGrant{grants: grants, users: users, tenants: tenants, clock: clock}
+	Grants  ports.GrantStore
+	Users   ports.UserStore
+	Tenants ports.TenantStore
+	Clock   ports.Clock
 }
 
 func (c *CreateGrant) Do(ctx context.Context, subject, tenantID, grantedBy string) (model.Grant, error) {
 	subject = strings.TrimSpace(subject)
 	tenantID = strings.TrimSpace(tenantID)
-	if _, err := c.users.GetUser(ctx, subject); err != nil {
+	if _, err := c.Users.GetUser(ctx, subject); err != nil {
 		return model.Grant{}, err
 	}
-	if _, err := c.tenants.GetTenant(ctx, tenantID); err != nil {
+	if _, err := c.Tenants.GetTenant(ctx, tenantID); err != nil {
 		return model.Grant{}, err
 	}
 	g := model.Grant{
 		Subject:   subject,
 		TenantID:  tenantID,
-		GrantedAt: c.clock.Now(),
+		GrantedAt: c.Clock.Now(),
 		GrantedBy: grantedBy,
 	}
-	if err := c.grants.CreateGrant(ctx, g); err != nil {
+	if err := c.Grants.CreateGrant(ctx, g); err != nil {
 		return model.Grant{}, err
 	}
 	return g, nil

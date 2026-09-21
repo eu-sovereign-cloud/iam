@@ -17,9 +17,9 @@ func TestCreateGrant_RequiresExistingUserAndTenant(t *testing.T) {
 	users := newFakeUserStore()
 	tenants := newFakeTenantStore()
 	grants := newFakeGrantStore()
-	create := controller.NewCreateGrant(grants, users, tenants, clock)
-	list := controller.NewListUserGrants(grants)
-	deleteGrant := controller.NewDeleteGrant(grants)
+	create := &controller.CreateGrant{Grants: grants, Users: users, Tenants: tenants, Clock: clock}
+	list := &controller.ListUserGrants{Grants: grants}
+	deleteGrant := &controller.DeleteGrant{Grants: grants}
 
 	_, err := create.Do(ctx, "alice", "tenant-1", "admin")
 	require.ErrorIs(t, err, model.ErrNotFound, "unknown user should be rejected")

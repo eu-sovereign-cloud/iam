@@ -15,17 +15,13 @@ const BootstrapAdminSubject = "admin"
 // persisted, only its metadata (including its jti) is. Composes
 // ListUsers, CreateUser and CreatePAT rather than duplicating their logic.
 type EnsureBootstrapAdmin struct {
-	listUsers  *ListUsers
-	createUser *CreateUser
-	createPAT  *CreatePAT
-}
-
-func NewEnsureBootstrapAdmin(listUsers *ListUsers, createUser *CreateUser, createPAT *CreatePAT) *EnsureBootstrapAdmin {
-	return &EnsureBootstrapAdmin{listUsers: listUsers, createUser: createUser, createPAT: createPAT}
+	ListUsers  *ListUsers
+	CreateUser *CreateUser
+	CreatePAT  *CreatePAT
 }
 
 func (c *EnsureBootstrapAdmin) Do(ctx context.Context) (rawPAT string, created bool, err error) {
-	existing, err := c.listUsers.Do(ctx)
+	existing, err := c.ListUsers.Do(ctx)
 	if err != nil {
 		return "", false, fmt.Errorf("listing users: %w", err)
 	}
@@ -35,11 +31,11 @@ func (c *EnsureBootstrapAdmin) Do(ctx context.Context) (rawPAT string, created b
 		}
 	}
 
-	if _, err := c.createUser.Do(ctx, BootstrapAdminSubject, "Bootstrap Administrator", true); err != nil {
+	if _, err := c.CreateUser.Do(ctx, BootstrapAdminSubject, "Bootstrap Administrator", true); err != nil {
 		return "", false, fmt.Errorf("creating bootstrap admin user: %w", err)
 	}
 
-	_, raw, err := c.createPAT.Do(ctx, BootstrapAdminSubject, "bootstrap", nil, 0)
+	_, raw, err := c.CreatePAT.Do(ctx, BootstrapAdminSubject, "bootstrap", nil, 0)
 	if err != nil {
 		return "", false, fmt.Errorf("creating bootstrap admin PAT: %w", err)
 	}

@@ -44,26 +44,26 @@ func newTestStack(t *testing.T) *testStack {
 
 	clock := adapter.SystemClock{}
 
-	createTenant := controller.NewCreateTenant(store, clock)
-	listTenants := controller.NewListTenants(store)
-	deleteTenant := controller.NewDeleteTenant(store)
+	createTenant := &controller.CreateTenant{Tenants: store, Clock: clock}
+	listTenants := &controller.ListTenants{Tenants: store}
+	deleteTenant := &controller.DeleteTenant{Tenants: store}
 
-	createUser := controller.NewCreateUser(store, clock)
-	listUsers := controller.NewListUsers(store)
-	setUserAdmin := controller.NewSetUserAdmin(store)
-	deleteUser := controller.NewDeleteUser(store)
+	createUser := &controller.CreateUser{Users: store, Clock: clock}
+	listUsers := &controller.ListUsers{Users: store}
+	setUserAdmin := &controller.SetUserAdmin{Users: store}
+	deleteUser := &controller.DeleteUser{Users: store}
 
-	createGrant := controller.NewCreateGrant(store, store, store, clock)
-	listUserGrants := controller.NewListUserGrants(store)
-	deleteGrant := controller.NewDeleteGrant(store)
+	createGrant := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock}
+	listUserGrants := &controller.ListUserGrants{Grants: store}
+	deleteGrant := &controller.DeleteGrant{Grants: store}
 
-	createPAT := controller.NewCreatePAT(store, store, signer, clock, "https://iam.example.com", "ecp-gateway")
-	listUserPATs := controller.NewListUserPATs(store)
-	getPAT := controller.NewGetPAT(store)
-	revokePAT := controller.NewRevokePAT(store)
+	createPAT := &controller.CreatePAT{PATs: store, Grants: store, Signer: signer, Clock: clock, Issuer: "https://iam.example.com", Audience: []string{"ecp-gateway"}}
+	listUserPATs := &controller.ListUserPATs{PATs: store}
+	getPAT := &controller.GetPAT{PATs: store}
+	revokePAT := &controller.RevokePAT{PATs: store}
 
-	authenticatePAT := controller.NewAuthenticatePAT(store, signer, clock)
-	authenticateUser := controller.NewAuthenticateUser(authenticatePAT, store)
+	authenticatePAT := &controller.AuthenticatePAT{PATs: store, Signer: signer, Clock: clock}
+	authenticateUser := &controller.AuthenticateUser{PATs: authenticatePAT, Users: store}
 
 	admin, err := createUser.Do(ctx, "admin@example.com", "Admin", true)
 	require.NoError(t, err)

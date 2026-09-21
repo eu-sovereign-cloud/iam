@@ -21,28 +21,28 @@ func TestWebRoutesRenderWithoutError(t *testing.T) {
 	require.NoError(t, store.Load(ctx))
 
 	clock := adapter.SystemClock{}
-	createUser := controller.NewCreateUser(store, clock)
-	getUser := controller.NewGetUser(store)
-	listUsers := controller.NewListUsers(store)
-	deleteUser := controller.NewDeleteUser(store)
+	createUser := &controller.CreateUser{Users: store, Clock: clock}
+	getUser := &controller.GetUser{Users: store}
+	listUsers := &controller.ListUsers{Users: store}
+	deleteUser := &controller.DeleteUser{Users: store}
 
-	createTenant := controller.NewCreateTenant(store, clock)
-	listTenants := controller.NewListTenants(store)
-	deleteTenant := controller.NewDeleteTenant(store)
+	createTenant := &controller.CreateTenant{Tenants: store, Clock: clock}
+	listTenants := &controller.ListTenants{Tenants: store}
+	deleteTenant := &controller.DeleteTenant{Tenants: store}
 
-	createGrant := controller.NewCreateGrant(store, store, store, clock)
-	listUserGrants := controller.NewListUserGrants(store)
-	deleteGrant := controller.NewDeleteGrant(store)
+	createGrant := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock}
+	listUserGrants := &controller.ListUserGrants{Grants: store}
+	deleteGrant := &controller.DeleteGrant{Grants: store}
 
 	signer, err := adapter.LoadOrCreateSigner(ctx, client, "iam-system")
 	require.NoError(t, err)
-	createPAT := controller.NewCreatePAT(store, store, signer, clock, "https://iam.example.com", "ecp-gateway")
-	listUserPATs := controller.NewListUserPATs(store)
-	getPAT := controller.NewGetPAT(store)
-	revokePAT := controller.NewRevokePAT(store)
+	createPAT := &controller.CreatePAT{PATs: store, Grants: store, Signer: signer, Clock: clock, Issuer: "https://iam.example.com", Audience: []string{"ecp-gateway"}}
+	listUserPATs := &controller.ListUserPATs{PATs: store}
+	getPAT := &controller.GetPAT{PATs: store}
+	revokePAT := &controller.RevokePAT{PATs: store}
 
-	authenticatePAT := controller.NewAuthenticatePAT(store, signer, clock)
-	authenticateUser := controller.NewAuthenticateUser(authenticatePAT, store)
+	authenticatePAT := &controller.AuthenticatePAT{PATs: store, Signer: signer, Clock: clock}
+	authenticateUser := &controller.AuthenticateUser{PATs: authenticatePAT, Users: store}
 
 	admin, err := createUser.Do(ctx, "admin@example.com", "Admin", true)
 	require.NoError(t, err)

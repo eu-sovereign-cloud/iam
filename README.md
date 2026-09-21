@@ -26,7 +26,7 @@ All configuration is via environment variables (`internal/config`):
 | `IAM_LISTEN_ADDR`          | `:8080`        |                                            |
 | `IAM_NAMESPACE`            | `iam-system`   | Kubernetes namespace IAM stores state in  |
 | `IAM_JWT_ISSUER`           | *(required)*   | `iss` claim on issued JWTs                |
-| `IAM_JWT_AUDIENCE`         | *(empty)*      | `aud` claim, omitted if unset             |
+| `IAM_JWT_AUDIENCE`         | *(empty)*      | `aud` claim, comma-separated, omitted if unset |
 | `KUBECONFIG`               | *(empty)*      | path to a kubeconfig; empty = in-cluster  |
 | `IAM_LOG_LEVEL`            | `info`         |                                            |
 

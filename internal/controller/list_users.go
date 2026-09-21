@@ -9,13 +9,9 @@ import (
 
 // ListUsers lists all registered Users.
 type ListUsers struct {
-	users ports.UserStore
-}
-
-func NewListUsers(users ports.UserStore) *ListUsers {
-	return &ListUsers{users: users}
+	Users ports.UserStore
 }
 
 func (c *ListUsers) Do(ctx context.Context) ([]model.User, error) {
-	return c.users.ListUsers(ctx)
+	return c.Users.ListUsers(ctx)
 }

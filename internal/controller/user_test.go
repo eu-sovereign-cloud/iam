@@ -13,7 +13,7 @@ import (
 
 func TestCreateUser_TrimsBeforeConflictCheck(t *testing.T) {
 	ctx := context.Background()
-	create := controller.NewCreateUser(newFakeUserStore(), fakeClock{now: time.Now()})
+	create := &controller.CreateUser{Users: newFakeUserStore(), Clock: fakeClock{now: time.Now()}}
 
 	_, err := create.Do(ctx, "alice@example.com", "Alice", false)
 	require.NoError(t, err)
@@ -24,7 +24,7 @@ func TestCreateUser_TrimsBeforeConflictCheck(t *testing.T) {
 
 func TestCreateUser_RequiresNonBlankSubject(t *testing.T) {
 	ctx := context.Background()
-	create := controller.NewCreateUser(newFakeUserStore(), fakeClock{now: time.Now()})
+	create := &controller.CreateUser{Users: newFakeUserStore(), Clock: fakeClock{now: time.Now()}}
 
 	_, err := create.Do(ctx, "   ", "", false)
 	require.ErrorIs(t, err, model.ErrInvalid)
@@ -34,8 +34,8 @@ func TestSetUserAdmin(t *testing.T) {
 	ctx := context.Background()
 	clock := fakeClock{now: time.Now()}
 	users := newFakeUserStore()
-	create := controller.NewCreateUser(users, clock)
-	setAdmin := controller.NewSetUserAdmin(users)
+	create := &controller.CreateUser{Users: users, Clock: clock}
+	setAdmin := &controller.SetUserAdmin{Users: users}
 
 	u, err := create.Do(ctx, "alice", "Alice", false)
 	require.NoError(t, err)
@@ -49,9 +49,9 @@ func TestSetUserAdmin(t *testing.T) {
 func TestDeleteUser(t *testing.T) {
 	ctx := context.Background()
 	users := newFakeUserStore()
-	create := controller.NewCreateUser(users, fakeClock{now: time.Now()})
-	get := controller.NewGetUser(users)
-	deleteUser := controller.NewDeleteUser(users)
+	create := &controller.CreateUser{Users: users, Clock: fakeClock{now: time.Now()}}
+	get := &controller.GetUser{Users: users}
+	deleteUser := &controller.DeleteUser{Users: users}
 
 	_, err := create.Do(ctx, "alice", "", false)
 	require.NoError(t, err)

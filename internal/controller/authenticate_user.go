@@ -12,19 +12,15 @@ import (
 // belongs to. Both internal/service (REST, header-based) and internal/web
 // (cookie-based) authenticate through this same use case.
 type AuthenticateUser struct {
-	pats  *AuthenticatePAT
-	users ports.UserStore
-}
-
-func NewAuthenticateUser(pats *AuthenticatePAT, users ports.UserStore) *AuthenticateUser {
-	return &AuthenticateUser{pats: pats, users: users}
+	PATs  *AuthenticatePAT
+	Users ports.UserStore
 }
 
 // Do resolves rawPAT to its owning, still-existing User.
 func (c *AuthenticateUser) Do(ctx context.Context, rawPAT string) (model.User, error) {
-	pat, err := c.pats.Do(ctx, rawPAT)
+	pat, err := c.PATs.Do(ctx, rawPAT)
 	if err != nil {
 		return model.User{}, err
 	}
-	return c.users.GetUser(ctx, pat.Subject)
+	return c.Users.GetUser(ctx, pat.Subject)
 }

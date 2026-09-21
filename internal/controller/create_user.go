@@ -12,12 +12,8 @@ import (
 // CreateUser registers a User. Callers are responsible for enforcing that
 // only admins invoke it.
 type CreateUser struct {
-	users ports.UserStore
-	clock ports.Clock
-}
-
-func NewCreateUser(users ports.UserStore, clock ports.Clock) *CreateUser {
-	return &CreateUser{users: users, clock: clock}
+	Users ports.UserStore
+	Clock ports.Clock
 }
 
 func (c *CreateUser) Do(ctx context.Context, subject, displayName string, admin bool) (model.User, error) {
@@ -29,9 +25,9 @@ func (c *CreateUser) Do(ctx context.Context, subject, displayName string, admin 
 		Subject:     subject,
 		DisplayName: strings.TrimSpace(displayName),
 		Admin:       admin,
-		CreatedAt:   c.clock.Now(),
+		CreatedAt:   c.Clock.Now(),
 	}
-	if err := c.users.CreateUser(ctx, u); err != nil {
+	if err := c.Users.CreateUser(ctx, u); err != nil {
 		return model.User{}, err
 	}
 	return u, nil
