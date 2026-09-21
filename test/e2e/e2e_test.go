@@ -35,10 +35,24 @@ import (
 const (
 	testNamespace = "iam-e2e-test"
 	listenAddr    = "127.0.0.1:18080"
-	baseURL       = "http://" + listenAddr
 	roleCRD       = "testdata/crds/authorization.v1.secapi.cloud_roles.yaml"
 	roleAssignCRD = "testdata/crds/authorization.v1.secapi.cloud_role-assignments.yaml"
 )
+
+// baseURL is mutated (and restored via withBaseURL) by TestEndToEndHelm to
+// point the shared HTTP helpers below at a Helm-deployed Service instead of
+// the local iamd subprocess TestEndToEnd itself uses. Safe because Go test
+// functions in this package run sequentially (neither calls t.Parallel()).
+var baseURL = "http://" + listenAddr
+
+// withBaseURL points baseURL at url for the duration of t, restoring the
+// previous value in cleanup.
+func withBaseURL(t *testing.T, url string) {
+	t.Helper()
+	orig := baseURL
+	baseURL = url
+	t.Cleanup(func() { baseURL = orig })
+}
 
 func TestEndToEnd(t *testing.T) {
 	requireKubectl(t)
@@ -54,7 +68,7 @@ func TestEndToEnd(t *testing.T) {
 	binPath := buildIamd(t)
 	proc, stdout := startIamd(t, binPath)
 	adminPAT := waitForBootstrapPAT(t, stdout)
-	waitForListening(t)
+	waitForListening(t, listenAddr)
 
 	// --- Core flow: tenant -> user -> grant -> self-service PAT ---
 	// Per ADR 0012 the PAT itself is the signed JWT; there is no exchange
@@ -120,7 +134,7 @@ func TestEndToEnd(t *testing.T) {
 	stopIamd(t, proc)
 	proc2, stdout2 := startIamd(t, binPath)
 	requireNoNewBootstrapPAT(t, stdout2)
-	waitForListening(t)
+	waitForListening(t, listenAddr)
 	proc = proc2
 
 	tenants := listTenants(t, adminPAT)
@@ -279,18 +293,18 @@ func requireNoNewBootstrapPAT(t *testing.T, lines <-chan string) {
 	}
 }
 
-func waitForListening(t *testing.T) {
+func waitForListening(t *testing.T, addr string) {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", listenAddr, time.Second)
+		conn, err := net.DialTimeout("tcp", addr, time.Second)
 		if err == nil {
 			_ = conn.Close()
 			return
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
-	t.Fatalf("iamd never started listening on %s", listenAddr)
+	t.Fatalf("nothing ever started listening on %s", addr)
 }
 
 func doJSON(t *testing.T, method, path, bearer string, body any) *http.Response {

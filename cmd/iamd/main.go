@@ -123,6 +123,14 @@ func run() error {
 	mux.Handle("/api/", svc.Router())
 	mux.Handle("/web/", webUI.Router())
 	svc.RegisterDiscoveryRoutes(mux)
+	// Registered only after store.Load/kubecrypt.LoadOrCreate above have
+	// already succeeded, same as every other route in this file — good
+	// enough as both a liveness and a readiness probe target since iamd
+	// has no separate "ready but not live" state.
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
 
 	srv := &http.Server{Addr: cfg.ListenAddr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 

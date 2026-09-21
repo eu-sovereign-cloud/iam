@@ -1,0 +1,14 @@
+iam has been installed as {{ include "iam.fullname" . }} in namespace {{ .Release.Namespace }}.
+
+On first startup, iamd creates a bootstrap admin User and a one-time PAT,
+logged once (ADR 0006) - fetch it with:
+
+  kubectl logs -n {{ .Release.Namespace }} deploy/{{ include "iam.fullname" . }} \
+    | grep 'bootstrap admin PAT'
+
+Reach the service from inside the cluster at:
+
+  http://{{ include "iam.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+
+See the main repository README (https://github.com/eu-sovereign-cloud/iam)
+for the API walkthrough, and this chart's README for configuration details.

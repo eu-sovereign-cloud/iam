@@ -41,7 +41,11 @@ vuln:
 
 .PHONY: e2e
 e2e:
-	go test -tags e2e ./test/e2e/... -v -timeout 5m
+	go test -tags e2e ./test/e2e/... -run '^TestEndToEnd$$' -v -timeout 5m
+
+.PHONY: e2e-helm
+e2e-helm:
+	go test -tags e2e ./test/e2e/... -run '^TestEndToEndHelm$$' -v -timeout 8m
 
 .PHONY: docker-build
 docker-build:

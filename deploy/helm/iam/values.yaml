@@ -1,0 +1,54 @@
+image:
+  repository: ghcr.io/eu-sovereign-cloud/iam
+  # Defaults to .Chart.AppVersion when unset.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# iamd loads all state once at startup with no watch/informer (ADR 0009),
+# so more than one replica would run divergent in-memory caches and could
+# race creating the iam-signing-key Secret. Not currently a supported
+# configuration - see doc/adr/0020.
+replicaCount: 1
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+rbac:
+  # Grants the ServiceAccount access to configmaps/secrets in the target
+  # namespace, plus cluster-scoped access to namespaces and ecp's
+  # Role/RoleAssignment CRDs (see doc/adr/0018, doc/adr/0020).
+  create: true
+
+service:
+  type: ClusterIP
+  port: 8080
+
+config:
+  # Required - fails the render with a clear error if unset, mirroring
+  # IAM_JWT_ISSUER's "required" env tag.
+  jwtIssuer: ""
+  jwtAudience: []
+  # Kubernetes namespace iamd stores its own state in (IAM_NAMESPACE).
+  # Defaults to the release namespace.
+  namespace: ""
+  logLevel: info
+  listenAddr: ":8080"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 500m
+    memory: 128Mi
+
+podAnnotations: {}
+podLabels: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

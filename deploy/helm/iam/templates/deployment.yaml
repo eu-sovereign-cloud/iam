@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "iam.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "iam.labels" . | nindent 4 }}
+spec:
+  # iamd loads all state once at startup with no watch/informer (ADR 0009):
+  # more than one replica isn't supported yet (see values.yaml, doc/adr/0020).
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    # No leader election - avoid two pods briefly running together during a
+    # rolling update racing to create the iam-signing-key Secret.
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "iam.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "iam.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "iam.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: iam
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: IAM_LISTEN_ADDR
+              value: {{ .Values.config.listenAddr | quote }}
+            - name: IAM_NAMESPACE
+              value: {{ include "iam.namespace" . | quote }}
+            - name: IAM_JWT_ISSUER
+              value: {{ required "config.jwtIssuer is required (becomes the IAM_JWT_ISSUER env var - see internal/config)" .Values.config.jwtIssuer | quote }}
+            {{- if .Values.config.jwtAudience }}
+            - name: IAM_JWT_AUDIENCE
+              value: {{ join "," .Values.config.jwtAudience | quote }}
+            {{- end }}
+            - name: IAM_LOG_LEVEL
+              value: {{ .Values.config.logLevel | quote }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

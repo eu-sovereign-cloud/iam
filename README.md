@@ -137,6 +137,22 @@ curl -s -H "Authorization: Bearer $PAT" localhost:8080/userinfo
 # => {"sub":"alice@example.com"}
 ```
 
+## Deploying to Kubernetes
+
+A Helm chart is published alongside every tagged release at
+`oci://ghcr.io/eu-sovereign-cloud/charts/iam` (ADR 0020):
+
+```sh
+helm install iam oci://ghcr.io/eu-sovereign-cloud/charts/iam \
+  --namespace iam-system --create-namespace \
+  --set config.jwtIssuer=https://iam.example.com
+```
+
+See `deploy/helm/iam/README.md` for the chart's configurable values and
+what it provisions (a single-replica `Deployment`, `Service`, and the
+RBAC iam needs to manage its own state and ecp's `Role`/`RoleAssignment`
+CRDs).
+
 ## Development
 
 ```sh

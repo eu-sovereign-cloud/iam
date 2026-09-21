@@ -39,3 +39,16 @@ jobs:
 
       - name: Vulnerability check
         run: make vuln
+
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      - name: Lint chart
+        run: helm lint deploy/helm/iam --set config.jwtIssuer=https://iam.example.com
+
+      - name: Render chart
+        run: helm template deploy/helm/iam --set config.jwtIssuer=https://iam.example.com > /dev/null
