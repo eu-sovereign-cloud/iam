@@ -8,24 +8,20 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
-	k8sfake "k8s.io/client-go/kubernetes/fake"
 
-	"github.com/eu-sovereign-cloud/iam/internal/adapter/kubecrypt"
-	"github.com/eu-sovereign-cloud/iam/internal/adapter/kubestore"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/memorycrypto"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/memorystore"
 	"github.com/eu-sovereign-cloud/iam/internal/adapter/system"
 	"github.com/eu-sovereign-cloud/iam/internal/controller"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 	"github.com/eu-sovereign-cloud/iam/internal/service"
 )
 
-var jwtParser = jwt.NewParser()
-
-// testStack wires a full, in-process instance of the service against a
-// fake Kubernetes clientset (no real cluster needed) so these tests
-// exercise real routing, real auth middleware and real business logic —
-// only the Kubernetes API itself is faked.
+// testStack wires a full, in-process instance of the service against the
+// in-memory memorystore/memorycrypto adapters (no Kubernetes involved) so
+// these tests exercise real routing, real auth middleware and real
+// business logic without standing up a fake clientset.
 type testStack struct {
 	svc        *service.Service
 	adminPAT   string
@@ -36,14 +32,8 @@ type testStack struct {
 func newTestStack(t *testing.T) *testStack {
 	t.Helper()
 	ctx := context.Background()
-	client := k8sfake.NewClientset()
-
-	store := kubestore.New(client, "iam-system")
-	require.NoError(t, store.Load(ctx))
-
-	signer, err := kubecrypt.LoadOrCreate(ctx, client, "iam-system")
-	require.NoError(t, err)
-
+	store := memorystore.New()
+	signer := memorycrypto.Signer{}
 	clock := system.Clock{}
 
 	createTenant := &controller.CreateTenant{Tenants: store, Clock: clock}
@@ -159,7 +149,7 @@ func TestEndToEnd_CreateUserGrantIssuePATRevoke(t *testing.T) {
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&created))
 	require.NotEmpty(t, created.Secret)
 
-	claims, err := parseUnverified(created.Secret)
+	claims, err := (memorycrypto.Signer{}).Verify(created.Secret)
 	require.NoError(t, err)
 	require.Equal(t, "bob@example.com", claims.Subject)
 	require.Equal(t, []string{"tenant-1"}, claims.Tenants)
@@ -180,10 +170,4 @@ func TestEndToEnd_CreateUserGrantIssuePATRevoke(t *testing.T) {
 
 	rec = doJSON(t, mux, http.MethodGet, "/api/v1/users/bob@example.com/pats", created.Secret, nil)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
-}
-
-func parseUnverified(token string) (*model.Claims, error) {
-	claims := &model.Claims{}
-	_, _, err := jwtParser.ParseUnverified(token, claims)
-	return claims, err
 }

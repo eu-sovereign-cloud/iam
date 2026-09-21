@@ -7,13 +7,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/memorystore"
 	"github.com/eu-sovereign-cloud/iam/internal/controller"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 )
 
 func TestCreateUser_TrimsBeforeConflictCheck(t *testing.T) {
 	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
-	create := &controller.CreateUser{Users: newFakeUserStore(), Clock: fakeClock{now: time.Now()}}
+	create := &controller.CreateUser{Users: memorystore.New(), Clock: fakeClock{now: time.Now()}}
 
 	_, err := create.Do(ctx, "alice@example.com", "Alice", false)
 	require.NoError(t, err)
@@ -24,7 +25,7 @@ func TestCreateUser_TrimsBeforeConflictCheck(t *testing.T) {
 
 func TestCreateUser_RequiresNonBlankSubject(t *testing.T) {
 	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
-	create := &controller.CreateUser{Users: newFakeUserStore(), Clock: fakeClock{now: time.Now()}}
+	create := &controller.CreateUser{Users: memorystore.New(), Clock: fakeClock{now: time.Now()}}
 
 	_, err := create.Do(ctx, "   ", "", false)
 	require.ErrorIs(t, err, model.ErrInvalid)
@@ -33,9 +34,9 @@ func TestCreateUser_RequiresNonBlankSubject(t *testing.T) {
 func TestSetUserAdmin(t *testing.T) {
 	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
 	clock := fakeClock{now: time.Now()}
-	users := newFakeUserStore()
-	create := &controller.CreateUser{Users: users, Clock: clock}
-	setAdmin := &controller.SetUserAdmin{Users: users}
+	store := memorystore.New()
+	create := &controller.CreateUser{Users: store, Clock: clock}
+	setAdmin := &controller.SetUserAdmin{Users: store}
 
 	u, err := create.Do(ctx, "alice", "Alice", false)
 	require.NoError(t, err)
@@ -48,10 +49,10 @@ func TestSetUserAdmin(t *testing.T) {
 
 func TestDeleteUser(t *testing.T) {
 	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
-	users := newFakeUserStore()
-	create := &controller.CreateUser{Users: users, Clock: fakeClock{now: time.Now()}}
-	get := &controller.GetUser{Users: users}
-	deleteUser := &controller.DeleteUser{Users: users}
+	store := memorystore.New()
+	create := &controller.CreateUser{Users: store, Clock: fakeClock{now: time.Now()}}
+	get := &controller.GetUser{Users: store}
+	deleteUser := &controller.DeleteUser{Users: store}
 
 	_, err := create.Do(ctx, "alice", "", false)
 	require.NoError(t, err)

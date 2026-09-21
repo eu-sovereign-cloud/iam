@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/memorystore"
 	"github.com/eu-sovereign-cloud/iam/internal/controller"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 )
@@ -14,21 +15,19 @@ import (
 func TestCreateGrant_RequiresExistingUserAndTenant(t *testing.T) {
 	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
 	clock := fakeClock{now: time.Now()}
-	users := newFakeUserStore()
-	tenants := newFakeTenantStore()
-	grants := newFakeGrantStore()
-	create := &controller.CreateGrant{Grants: grants, Users: users, Tenants: tenants, Clock: clock}
-	list := &controller.ListUserGrants{Grants: grants}
-	deleteGrant := &controller.DeleteGrant{Grants: grants}
+	store := memorystore.New()
+	create := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock}
+	list := &controller.ListUserGrants{Grants: store}
+	deleteGrant := &controller.DeleteGrant{Grants: store}
 
 	_, err := create.Do(ctx, "alice", "tenant-1", "admin")
 	require.ErrorIs(t, err, model.ErrNotFound, "unknown user should be rejected")
 
-	require.NoError(t, users.CreateUser(ctx, model.User{Subject: "alice", CreatedAt: clock.now}))
+	require.NoError(t, store.CreateUser(ctx, model.User{Subject: "alice", CreatedAt: clock.now}))
 	_, err = create.Do(ctx, "alice", "tenant-1", "admin")
 	require.ErrorIs(t, err, model.ErrNotFound, "unknown tenant should be rejected")
 
-	require.NoError(t, tenants.CreateTenant(ctx, model.Tenant{TenantID: "tenant-1", CreatedAt: clock.now}))
+	require.NoError(t, store.CreateTenant(ctx, model.Tenant{TenantID: "tenant-1", CreatedAt: clock.now}))
 	g, err := create.Do(ctx, "alice", "tenant-1", "admin")
 	require.NoError(t, err)
 	require.Equal(t, "alice", g.Subject)
@@ -45,8 +44,8 @@ func TestCreateGrant_RequiresExistingUserAndTenant(t *testing.T) {
 }
 
 func TestListUserGrants_SelfOrAdmin(t *testing.T) {
-	grants := newFakeGrantStore()
-	list := &controller.ListUserGrants{Grants: grants}
+	store := memorystore.New()
+	list := &controller.ListUserGrants{Grants: store}
 
 	selfCtx := model.WithIdentity(context.Background(), model.User{Subject: "alice"})
 	_, err := list.Do(selfCtx, "alice")
@@ -60,14 +59,12 @@ func TestListUserGrants_SelfOrAdmin(t *testing.T) {
 func TestSetGrantAdmin(t *testing.T) {
 	adminCtx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
 	clock := fakeClock{now: time.Now()}
-	users := newFakeUserStore()
-	tenants := newFakeTenantStore()
-	grants := newFakeGrantStore()
-	create := &controller.CreateGrant{Grants: grants, Users: users, Tenants: tenants, Clock: clock}
-	setGrantAdmin := &controller.SetGrantAdmin{Grants: grants}
+	store := memorystore.New()
+	create := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock}
+	setGrantAdmin := &controller.SetGrantAdmin{Grants: store}
 
-	require.NoError(t, users.CreateUser(adminCtx, model.User{Subject: "alice", CreatedAt: clock.now}))
-	require.NoError(t, tenants.CreateTenant(adminCtx, model.Tenant{TenantID: "tenant-1", CreatedAt: clock.now}))
+	require.NoError(t, store.CreateUser(adminCtx, model.User{Subject: "alice", CreatedAt: clock.now}))
+	require.NoError(t, store.CreateTenant(adminCtx, model.Tenant{TenantID: "tenant-1", CreatedAt: clock.now}))
 	_, err := create.Do(adminCtx, "alice", "tenant-1", "admin")
 	require.NoError(t, err)
 
@@ -81,8 +78,8 @@ func TestSetGrantAdmin(t *testing.T) {
 }
 
 func TestSetGrantAdmin_RequiresGlobalAdmin(t *testing.T) {
-	grants := newFakeGrantStore()
-	setGrantAdmin := &controller.SetGrantAdmin{Grants: grants}
+	store := memorystore.New()
+	setGrantAdmin := &controller.SetGrantAdmin{Grants: store}
 
 	tenantAdminCtx := model.WithIdentity(context.Background(), model.User{Subject: "alice"})
 	_, err := setGrantAdmin.Do(tenantAdminCtx, "alice", "tenant-1", true)
@@ -92,17 +89,15 @@ func TestSetGrantAdmin_RequiresGlobalAdmin(t *testing.T) {
 func TestCreateGrant_TenantAdminMayGrantOwnTenantOnly(t *testing.T) {
 	adminCtx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
 	clock := fakeClock{now: time.Now()}
-	users := newFakeUserStore()
-	tenants := newFakeTenantStore()
-	grants := newFakeGrantStore()
-	create := &controller.CreateGrant{Grants: grants, Users: users, Tenants: tenants, Clock: clock}
-	deleteGrant := &controller.DeleteGrant{Grants: grants}
-	setGrantAdmin := &controller.SetGrantAdmin{Grants: grants}
+	store := memorystore.New()
+	create := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock}
+	deleteGrant := &controller.DeleteGrant{Grants: store}
+	setGrantAdmin := &controller.SetGrantAdmin{Grants: store}
 
-	require.NoError(t, users.CreateUser(adminCtx, model.User{Subject: "alice", CreatedAt: clock.now}))
-	require.NoError(t, users.CreateUser(adminCtx, model.User{Subject: "carol", CreatedAt: clock.now}))
-	require.NoError(t, tenants.CreateTenant(adminCtx, model.Tenant{TenantID: "tenant-1", CreatedAt: clock.now}))
-	require.NoError(t, tenants.CreateTenant(adminCtx, model.Tenant{TenantID: "tenant-2", CreatedAt: clock.now}))
+	require.NoError(t, store.CreateUser(adminCtx, model.User{Subject: "alice", CreatedAt: clock.now}))
+	require.NoError(t, store.CreateUser(adminCtx, model.User{Subject: "carol", CreatedAt: clock.now}))
+	require.NoError(t, store.CreateTenant(adminCtx, model.Tenant{TenantID: "tenant-1", CreatedAt: clock.now}))
+	require.NoError(t, store.CreateTenant(adminCtx, model.Tenant{TenantID: "tenant-2", CreatedAt: clock.now}))
 	_, err := create.Do(adminCtx, "alice", "tenant-1", "admin")
 	require.NoError(t, err)
 	_, err = setGrantAdmin.Do(adminCtx, "alice", "tenant-1", true)

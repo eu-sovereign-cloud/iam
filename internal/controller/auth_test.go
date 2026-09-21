@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/memorycrypto"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/memorystore"
 	"github.com/eu-sovereign-cloud/iam/internal/controller"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 )
@@ -14,15 +16,13 @@ import (
 func TestAuthenticateUser(t *testing.T) {
 	ctx := context.Background()
 	clock := fakeClock{now: time.Now()}
-	users := newFakeUserStore()
-	pats := newFakePATStore()
-	grants := newFakeGrantStore()
+	store := memorystore.New()
 
-	require.NoError(t, users.CreateUser(ctx, model.User{Subject: "alice", CreatedAt: clock.now}))
+	require.NoError(t, store.CreateUser(ctx, model.User{Subject: "alice", CreatedAt: clock.now}))
 
-	createPAT := &controller.CreatePAT{PATs: pats, Grants: grants, Signer: fakeSigner{}, Clock: clock, Issuer: "iss", Audience: []string{"aud"}}
-	authenticatePAT := &controller.AuthenticatePAT{PATs: pats, Signer: fakeSigner{}, Clock: clock}
-	authenticateUser := &controller.AuthenticateUser{PATs: authenticatePAT, Users: users}
+	createPAT := &controller.CreatePAT{PATs: store, Grants: store, Signer: memorycrypto.Signer{}, Clock: clock, Issuer: "iss", Audience: []string{"aud"}}
+	authenticatePAT := &controller.AuthenticatePAT{PATs: store, Signer: memorycrypto.Signer{}, Clock: clock}
+	authenticateUser := &controller.AuthenticateUser{PATs: authenticatePAT, Users: store}
 
 	selfCtx := model.WithIdentity(ctx, model.User{Subject: "alice"})
 	_, raw, err := createPAT.Do(selfCtx, "alice", "laptop", nil, 0)
@@ -36,14 +36,13 @@ func TestAuthenticateUser(t *testing.T) {
 func TestAuthenticateUser_UnknownSubject(t *testing.T) {
 	ctx := context.Background()
 	clock := fakeClock{now: time.Now()}
-	pats := newFakePATStore()
-	grants := newFakeGrantStore()
+	store := memorystore.New()
 
 	// A PAT for a subject that was never registered as a User (e.g. the
 	// User was deleted after the PAT was issued).
-	createPAT := &controller.CreatePAT{PATs: pats, Grants: grants, Signer: fakeSigner{}, Clock: clock, Issuer: "iss", Audience: []string{"aud"}}
-	authenticatePAT := &controller.AuthenticatePAT{PATs: pats, Signer: fakeSigner{}, Clock: clock}
-	authenticateUser := &controller.AuthenticateUser{PATs: authenticatePAT, Users: newFakeUserStore()}
+	createPAT := &controller.CreatePAT{PATs: store, Grants: store, Signer: memorycrypto.Signer{}, Clock: clock, Issuer: "iss", Audience: []string{"aud"}}
+	authenticatePAT := &controller.AuthenticatePAT{PATs: store, Signer: memorycrypto.Signer{}, Clock: clock}
+	authenticateUser := &controller.AuthenticateUser{PATs: authenticatePAT, Users: memorystore.New()}
 
 	selfCtx := model.WithIdentity(ctx, model.User{Subject: "ghost"})
 	_, raw, err := createPAT.Do(selfCtx, "ghost", "laptop", nil, 0)
