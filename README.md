@@ -1,19 +1,20 @@
 # iam
 
-SECA IAM polyfill: a minimal, standalone user-management service that issues
-JWTs compatible with the [ecp](https://github.com/eu-sovereign-cloud/ecp)
-gateway's auth middleware, for deployments with no CSP-provided identity
-provider (IONOS's self-installable model). See
+A small, self-contained identity service for [SECA](https://github.com/eu-sovereign-cloud)
+deployments that have no CSP-provided identity provider to lean on
+(IONOS's self-installable model). It's a *polyfill*: it exists to issue
+JWTs the [ecp](https://github.com/eu-sovereign-cloud/ecp) gateway already
+knows how to validate, so ecp needs no code changes to work with it. See
 [GitHub issue #1](https://github.com/eu-sovereign-cloud/iam/issues/1) for
 the full ask, and `doc/adr/` for the architecture decisions behind this
 implementation.
 
 It manages **Users**, **Tenants**, and **Grants** (which tenants a user may
-claim, and what ecp role they hold there), and lets a user create/revoke
-**Personal Access Tokens (PATs)** — which *are* signed JWTs, not a separate
-credential exchanged for one (see ADR 0012). Only global admins manage
-Tenants/Users/Grants; any user manages their own PATs. A Grant can also
-mark its subject as a **tenant admin**
+claim, and what ecp role(s) they hold there), and lets a user create/revoke
+their own **Personal Access Tokens (PATs)** — which *are* signed JWTs, not a
+separate credential exchanged for one (see ADR 0012). Only global admins
+manage Tenants/Users/Grants; any user manages their own PATs. A Grant can
+also mark its subject as a **tenant admin**
 (`PATCH /api/v1/users/{subject}/grants/{tenantId}`, global-admin-only),
 letting them manage grants for that one tenant without being a global
 admin (see ADR 0016).
@@ -22,10 +23,38 @@ Creating a Tenant or Grant also provisions the corresponding `Role`/
 `RoleAssignment` objects directly in ecp's Kubernetes cluster (a
 backchannel, not ecp's REST API — see ADR 0018); an admin-only
 `POST /api/v1/tenants/{tenantId}/repair` re-applies that RBAC state from
-IAM's own records, overwriting any drift. Full IdP/SSO is out of scope — see issue #2 for the follow-on
-OIDC discovery/JWKS/`/userinfo` work, which is also what will eventually
-let `ecp` check whether a given PAT has been revoked (see ADR 0012's
-accepted revocation-gap trade-off).
+IAM's own records, overwriting any drift. Full IdP/SSO is out of scope —
+see issue #2 for the follow-on OIDC discovery/JWKS/`/userinfo` work, which
+is also what will eventually let `ecp` check whether a given PAT has been
+revoked (see ADR 0012's accepted revocation-gap trade-off).
+
+## Architecture
+
+![iam and ecp system context](doc/architecture-context.svg)
+
+iam and ecp are separate services in the same Kubernetes cluster and
+coordinate only through the Kubernetes API today: iam writes its own state
+plus ecp's `Role`/`RoleAssignment` CRDs as a backchannel (ADR 0018), and
+ecp independently reads/writes its own resources and validates the JWTs
+iam issues. Once iam's userinfo/JWKS endpoint ships (issue #2), ecp will
+also call iam directly to check PAT revocation status.
+
+![iam architecture](doc/architecture.svg)
+
+Zooming into iam itself, it follows a hexagonal layout (ADR 0002): two driving adapters,
+`internal/web` (a server-rendered HTML UI) and `internal/service` (the
+JSON/REST API), both sit behind a `RequireAuth` check and call into
+`internal/controller` — the framework-free core holding all business
+logic (ADR 0014). The core depends only on the interfaces in
+`internal/ports`, which production adapters under `internal/adapter/*`
+implement against Kubernetes: `kubestore` and `kubecrypt` for iam's own
+state (ConfigMaps/Secrets), and `kuberbac`, which writes ecp's
+`Role`/`RoleAssignment` CRDs straight into the cluster as a backchannel
+(ADR 0018) — ecp itself never sees a call from iam, it just reads what
+`kuberbac` wrote and validates the JWTs iam issues. Tests swap in the
+in-memory doubles under `internal/adapter/{memorystore,memoryrbac,
+memorycrypto}` instead (ADR 0017). See `doc/adr/` for the full decision
+log behind every piece of this.
 
 ## Configuration
 
@@ -99,10 +128,3 @@ make lint    # golangci-lint run
 make fmt     # gofmt + goimports
 make docker-build
 ```
-
-## Architecture
-
-See `doc/adr/` for the numbered architecture decision records (storage,
-folder layout, JWT claims shape, revocation, signing key, bootstrap, config,
-the Users/Tenants/Grants model, and the load-at-startup/no-watch/
-single-replica constraint).
