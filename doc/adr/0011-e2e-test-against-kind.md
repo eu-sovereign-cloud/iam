@@ -69,6 +69,27 @@ automated, repeatable test.
   still does not create `RoleAssignment` objects** — this is a compatibility
   check on the vendored copy, not new IAM behavior.
 
+- **`TestEndToEndHelm`** (`test/e2e/helm_test.go`) is a second, separate
+  test alongside `TestEndToEnd`, not a replacement: it builds the real
+  Docker image, `kind load docker-image`s it, and `helm install`s the
+  real chart (`deploy/helm/iam`, ADR 0020) instead of running `iamd` as a
+  local Go subprocess. That's the only thing that actually exercises the
+  chart's `ClusterRole`/`Role` (does the ServiceAccount really have what
+  `internal/adapter/kuberbac` needs to create a tenant namespace and
+  write `Role`/`RoleAssignment` objects?), the `Service`, and the
+  liveness/readiness probes end to end — `helm lint`/`helm template`/a
+  server-side dry-run alone can't catch an RBAC verb or resource typo
+  that only fails at actual apiserver-authorization time. It also
+  re-verifies ADR 0009's load-at-startup behavior under a real pod
+  eviction/reschedule (`kubectl delete pod` + rollout), a materially
+  different code path than `TestEndToEnd`'s local SIGTERM-and-relaunch.
+  It's built and run separately (`make e2e-helm`, a distinct `-run`
+  anchor from `make e2e`) because it needs more tools (`docker`, `kind`,
+  `helm`) and is slower; it self-skips (`t.Skip`, not a failure) unless
+  the current kubeconfig context is a local `kind-*` cluster, since a
+  locally-built image has no registry to be pushed to for any other
+  cluster — it must never be pointed at a real shared cluster.
+
 ## Consequences
 
 - Catches an entire class of bug the fake-clientset test structurally

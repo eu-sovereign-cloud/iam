@@ -1,0 +1,36 @@
+{{/*
+Namespace-scoped: iamd's own state (ConfigMaps/Secrets) lives only in
+IAM_NAMESPACE (internal/adapter/kubestore, internal/adapter/kubecrypt).
+*/}}
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "iam.fullname" . }}
+  namespace: {{ include "iam.namespace" . }}
+  labels:
+    {{- include "iam.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "create", "update"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "iam.fullname" . }}
+  namespace: {{ include "iam.namespace" . }}
+  labels:
+    {{- include "iam.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "iam.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "iam.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

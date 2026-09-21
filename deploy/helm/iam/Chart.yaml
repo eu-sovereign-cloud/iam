@@ -1,0 +1,9 @@
+apiVersion: v2
+name: iam
+description: SECA IAM polyfill service - issues and validates gateway-compatible JWTs
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/eu-sovereign-cloud/iam
+sources:
+  - https://github.com/eu-sovereign-cloud/iam

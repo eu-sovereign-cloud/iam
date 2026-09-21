@@ -40,3 +40,13 @@ jobs:
           tags: ghcr.io/${{ github.repository }}:${{ steps.tag.outputs.tag }}
           cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache
           cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Package and push Helm chart
+        run: |
+          version="${{ steps.tag.outputs.tag }}"
+          version="${version#v}"
+          helm package deploy/helm/iam --version "$version" --app-version "${{ steps.tag.outputs.tag }}" --destination /tmp
+          helm push "/tmp/iam-${version}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
