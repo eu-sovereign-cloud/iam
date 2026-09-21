@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SECA IAM — {{.Subject.Subject}}</title>
+  <link rel="icon" type="image/svg+xml" href="/web/static/seca-icon.svg">
+  <link rel="stylesheet" href="/web/static/style.css">
+</head>
+<body>
+  <div class="shell">
+    {{template "nav" .}}
+    <main class="doc">
+      <a class="back-link" href="/web/users">← Users</a>
+
+      <header class="doc-head">
+        <h1>{{.Subject.Subject}}</h1>
+        <p class="doc-meta">
+          {{if .Subject.DisplayName}}{{.Subject.DisplayName}} · {{end}}
+          {{if .Subject.Admin}}Admin · {{end}}registered {{.Subject.CreatedAt}}
+        </p>
+      </header>
+
+      {{if .Error}}<p class="notice notice-error">{{.Error}}</p>{{end}}
+
+      <section>
+        <h2>Tenant access</h2>
+
+        {{if .Grants}}
+        <table class="register">
+          <thead>
+            <tr><th>Tenant</th><th>Roles</th><th></th><th></th></tr>
+          </thead>
+          <tbody>
+            {{range .Grants}}
+            <tr>
+              <td><code>{{.TenantID}}</code>{{if .Admin}} <span class="chip">Tenant admin</span>{{end}}</td>
+              <td>{{range $i, $r := .Roles}}{{if $i}}, {{end}}{{$r}}{{end}}</td>
+              <td class="register-action">
+                {{if $.User.Admin}}
+                <form method="post" action="/web/users/{{.Subject}}/grants/{{.TenantID}}/admin">
+                  {{if .Admin}}
+                  <input type="hidden" name="admin" value="false">
+                  <button type="submit" class="link-button">Revoke tenant admin</button>
+                  {{else}}
+                  <input type="hidden" name="admin" value="true">
+                  <button type="submit" class="link-button">Make tenant admin</button>
+                  {{end}}
+                </form>
+                {{end}}
+              </td>
+              <td class="register-action">
+                <form method="post" action="/web/users/{{.Subject}}/grants/{{.TenantID}}/revoke">
+                  <button type="submit" class="link-button link-button-danger">Revoke</button>
+                </form>
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+        {{else}}
+        <p class="empty">This user has not been granted access to any tenant yet.</p>
+        {{end}}
+
+        <form method="post" action="/web/users/{{.Subject.Subject}}/grants" class="form form-row form-compact">
+          <select name="tenantId" aria-label="Tenant to grant">
+            {{range .Tenants}}<option value="{{.TenantID}}">{{.TenantID}}</option>{{end}}
+          </select>
+          <input type="text" name="roles" placeholder="Roles, e.g. member,viewer" aria-label="Roles" required>
+          <button type="submit" class="link-button">Grant tenant access</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>Access tokens</h2>
+
+        {{if .NewSecret}}
+        <div class="stamp">
+          <p class="stamp-label">Token issued — copy it now, it will not be shown again</p>
+          <div class="stamp-value">
+            <code id="new-secret">{{.NewSecret}}</code>
+            <button type="button" class="link-button" data-copy="new-secret">Copy</button>
+          </div>
+        </div>
+        <p class="danger-copy">This is {{.Subject.Subject}}'s credential, not yours — IAM has no way to notify them itself, so you're responsible for getting it to them.</p>
+        {{end}}
+
+        {{if .PATs}}
+        <table class="register">
+          <thead>
+            <tr><th>Name</th><th>Created</th><th>Expires</th><th></th></tr>
+          </thead>
+          <tbody>
+            {{range .PATs}}
+            <tr>
+              <td>{{.Name}}</td>
+              <td>{{.CreatedAt}}</td>
+              <td>{{if .ExpiresAt}}{{.ExpiresAt}}{{else}}<span class="muted">Never</span>{{end}}</td>
+              <td class="register-action">
+                <form method="post" action="/web/users/{{$.Subject.Subject}}/pats/{{.ID}}/revoke">
+                  <button type="submit" class="link-button link-button-danger">Revoke</button>
+                </form>
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+        {{else}}
+        <p class="empty">{{.Subject.Subject}} has no tokens yet.</p>
+        {{end}}
+
+        <form method="post" action="/web/users/{{.Subject.Subject}}/pats" class="form form-row form-compact">
+          <input type="text" name="name" placeholder="Name, e.g. laptop" aria-label="Token name">
+          <input type="text" name="ttl" placeholder="Expires after, e.g. 720h — blank for no expiry" aria-label="Token expiry">
+          <button type="submit" class="link-button">Issue token</button>
+        </form>
+        <p class="danger-copy">Revoking a token stops it from working here immediately, but any service that already has a copy of it may keep honoring it until it expires.</p>
+      </section>
+
+      <section class="panel panel-danger">
+        <h2>Remove user</h2>
+        <p class="danger-copy">Removes {{.Subject.Subject}} and every tenant grant they hold. Their existing tokens stop working immediately. This cannot be undone.</p>
+        <form method="post" action="/web/users/{{.Subject.Subject}}/delete"
+              onsubmit="return confirm('Remove {{.Subject.Subject}}? This cannot be undone.');">
+          <button type="submit" class="button-danger">Remove user</button>
+        </form>
+      </section>
+    </main>
+  </div>
+  <script src="/web/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SECA IAM — Sign in</title>
+  <link rel="icon" type="image/svg+xml" href="/web/static/seca-icon.svg">
+  <link rel="stylesheet" href="/web/static/style.css">
+</head>
+<body class="login-body">
+  <main class="login">
+    <section class="login-intro">
+      <img class="mark" src="/web/static/seca-icon.svg" alt="" width="56" height="45">
+      <h1>SECA IAM</h1>
+      <p>The credential office for this cluster. Sign in with a personal access token to manage tenants, users, and the tokens issued to them.</p>
+    </section>
+
+    <section class="login-window">
+      <form method="post" action="/web/login" class="form">
+        {{if .Error}}<p class="notice notice-error">{{.Error}}</p>{{end}}
+        <label for="pat">Personal access token</label>
+        <input id="pat" type="password" name="pat" placeholder="iampat_…" autocomplete="off" autofocus required>
+        <button type="submit">Continue</button>
+      </form>
+      <p class="login-hint">No token yet? Ask a cluster admin to issue one, or check the startup log for the first admin token.</p>
+    </section>
+  </main>
+</body>
+</html>

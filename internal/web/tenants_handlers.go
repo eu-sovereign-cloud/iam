@@ -1,0 +1,51 @@
+package web
+
+import (
+	"net/http"
+
+	"github.com/eu-sovereign-cloud/iam/internal/model"
+)
+
+type tenantView struct {
+	TenantID    string
+	DisplayName string
+	CreatedAt   string
+}
+
+func (wb *Web) handleTenantsPage(w http.ResponseWriter, r *http.Request) {
+	wb.renderTenantsPage(w, r, "")
+}
+
+func (wb *Web) renderTenantsPage(w http.ResponseWriter, r *http.Request, errMsg string) {
+	user := model.IdentityFromContext(r.Context())
+	tenants, err := wb.ListTenants.Do(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), statusFor(err))
+		return
+	}
+	views := make([]tenantView, 0, len(tenants))
+	for _, t := range tenants {
+		views = append(views, tenantView{TenantID: t.TenantID, DisplayName: t.DisplayName, CreatedAt: t.CreatedAt.Format(timeFormat)})
+	}
+	wb.render(w, "tenants.html", map[string]any{"User": user, "Tenants": views, "Error": errMsg, "Active": "tenants"})
+}
+
+func (wb *Web) handleTenantsCreate(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		wb.renderTenantsPage(w, r, "That submission did not come through. Try again.")
+		return
+	}
+	if _, err := wb.CreateTenant.Do(r.Context(), r.FormValue("tenantId"), r.FormValue("displayName")); err != nil {
+		wb.renderTenantsPage(w, r, err.Error())
+		return
+	}
+	http.Redirect(w, r, "/web/tenants", http.StatusSeeOther)
+}
+
+func (wb *Web) handleTenantsDelete(w http.ResponseWriter, r *http.Request) {
+	if err := wb.DeleteTenant.Do(r.Context(), r.PathValue("tenantId")); err != nil {
+		wb.renderTenantsPage(w, r, err.Error())
+		return
+	}
+	http.Redirect(w, r, "/web/tenants", http.StatusSeeOther)
+}

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SECA IAM — Tenants</title>
+  <link rel="icon" type="image/svg+xml" href="/web/static/seca-icon.svg">
+  <link rel="stylesheet" href="/web/static/style.css">
+</head>
+<body>
+  <div class="shell">
+    {{template "nav" .}}
+    <main class="doc">
+      <header class="doc-head">
+        <h1>Tenants</h1>
+        <p class="doc-meta">{{len .Tenants}} registered</p>
+      </header>
+
+      {{if .Error}}<p class="notice notice-error">{{.Error}}</p>{{end}}
+
+      {{if .Tenants}}
+      <table class="register">
+        <thead>
+          <tr><th>Tenant ID</th><th>Display name</th><th>Registered</th><th></th></tr>
+        </thead>
+        <tbody>
+          {{range .Tenants}}
+          <tr>
+            <td><code>{{.TenantID}}</code></td>
+            <td>{{if .DisplayName}}{{.DisplayName}}{{else}}<span class="muted">—</span>{{end}}</td>
+            <td>{{.CreatedAt}}</td>
+            <td class="register-action">
+              <form method="post" action="/web/tenants/{{.TenantID}}/delete">
+                <button type="submit" class="link-button link-button-danger">Remove</button>
+              </form>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+      {{else}}
+      <p class="empty">No tenants are registered yet. Add one below before granting anyone access to it.</p>
+      {{end}}
+
+      <section class="panel">
+        <h2>Register a tenant</h2>
+        <form method="post" action="/web/tenants" class="form form-row">
+          <div class="field">
+            <label for="tenantId">Tenant ID</label>
+            <input id="tenantId" type="text" name="tenantId" placeholder="e.g. acme-prod" required>
+          </div>
+          <div class="field">
+            <label for="displayName">Display name</label>
+            <input id="displayName" type="text" name="displayName" placeholder="e.g. Acme, production">
+          </div>
+          <button type="submit">Register</button>
+        </form>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
