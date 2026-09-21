@@ -9,13 +9,20 @@ the full ask, and `doc/adr/` for the architecture decisions behind this
 implementation.
 
 It manages **Users**, **Tenants**, and **Grants** (which tenants a user may
-claim), and lets a user create/revoke **Personal Access Tokens (PATs)** —
-which *are* signed JWTs, not a separate credential exchanged for one (see
-ADR 0012). Only global admins manage Tenants/Users/Grants; any user manages
-their own PATs. A Grant can also mark its subject as a **tenant admin**
+claim, and what ecp role they hold there), and lets a user create/revoke
+**Personal Access Tokens (PATs)** — which *are* signed JWTs, not a separate
+credential exchanged for one (see ADR 0012). Only global admins manage
+Tenants/Users/Grants; any user manages their own PATs. A Grant can also
+mark its subject as a **tenant admin**
 (`PATCH /api/v1/users/{subject}/grants/{tenantId}`, global-admin-only),
 letting them manage grants for that one tenant without being a global
-admin (see ADR 0016). Full IdP/SSO is out of scope — see issue #2 for the follow-on
+admin (see ADR 0016).
+
+Creating a Tenant or Grant also provisions the corresponding `Role`/
+`RoleAssignment` objects directly in ecp's Kubernetes cluster (a
+backchannel, not ecp's REST API — see ADR 0018); an admin-only
+`POST /api/v1/tenants/{tenantId}/repair` re-applies that RBAC state from
+IAM's own records, overwriting any drift. Full IdP/SSO is out of scope — see issue #2 for the follow-on
 OIDC discovery/JWKS/`/userinfo` work, which is also what will eventually
 let `ecp` check whether a given PAT has been revoked (see ADR 0012's
 accepted revocation-gap trade-off).
@@ -67,7 +74,7 @@ curl -s -X POST localhost:8080/api/v1/users \
   -d '{"subject":"alice@example.com","displayName":"Alice"}'
 curl -s -X POST localhost:8080/api/v1/users/alice@example.com/grants \
   -H "Authorization: Bearer $ADMIN_PAT" \
-  -d '{"tenantId":"tenant-1"}'
+  -d '{"tenantId":"tenant-1","roles":["member"]}'
 
 # Create a PAT for that user (self-service; here done with the admin PAT on their behalf).
 # The "secret" returned is a signed JWT and IS the bearer credential — use

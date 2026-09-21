@@ -8,6 +8,7 @@ package kube
 import (
 	"fmt"
 
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -26,6 +27,22 @@ func BuildClientset(kubeconfigPath string) (kubernetes.Interface, error) {
 		return nil, fmt.Errorf("building kube clientset: %w", err)
 	}
 	return clientset, nil
+}
+
+// BuildDynamicClient returns a Kubernetes dynamic client, for talking to
+// custom resources (like ecp's Role/RoleAssignment CRDs, see
+// internal/adapter/kuberbac) that have no generated typed clientset in
+// this module. Same config resolution as BuildClientset.
+func BuildDynamicClient(kubeconfigPath string) (dynamic.Interface, error) {
+	cfg, err := restConfig(kubeconfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("building kube client config: %w", err)
+	}
+	client, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("building kube dynamic client: %w", err)
+	}
+	return client, nil
 }
 
 func restConfig(kubeconfigPath string) (*rest.Config, error) {

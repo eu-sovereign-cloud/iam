@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/eu-sovereign-cloud/iam/internal/adapter/memorycrypto"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/memoryrbac"
 	"github.com/eu-sovereign-cloud/iam/internal/adapter/memorystore"
 	"github.com/eu-sovereign-cloud/iam/internal/adapter/system"
 	"github.com/eu-sovereign-cloud/iam/internal/controller"
@@ -26,14 +27,16 @@ func TestWebRoutesRenderWithoutError(t *testing.T) {
 	listUsers := &controller.ListUsers{Users: store}
 	deleteUser := &controller.DeleteUser{Users: store}
 
-	createTenant := &controller.CreateTenant{Tenants: store, Clock: clock}
-	listTenants := &controller.ListTenants{Tenants: store}
-	deleteTenant := &controller.DeleteTenant{Tenants: store}
+	roles := memoryrbac.New()
 
-	createGrant := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock}
+	createTenant := &controller.CreateTenant{Tenants: store, Clock: clock, TenantRoles: roles}
+	listTenants := &controller.ListTenants{Tenants: store}
+	deleteTenant := &controller.DeleteTenant{Tenants: store, Grants: store, TenantRoles: roles}
+
+	createGrant := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock, TenantRoles: roles}
 	listUserGrants := &controller.ListUserGrants{Grants: store}
-	deleteGrant := &controller.DeleteGrant{Grants: store}
-	setGrantAdmin := &controller.SetGrantAdmin{Grants: store}
+	deleteGrant := &controller.DeleteGrant{Grants: store, TenantRoles: roles}
+	setGrantAdmin := &controller.SetGrantAdmin{Grants: store, TenantRoles: roles}
 
 	signer := memorycrypto.Signer{}
 	createPAT := &controller.CreatePAT{PATs: store, Grants: store, Signer: signer, Clock: clock, Issuer: "https://iam.example.com", Audience: []string{"ecp-gateway"}}

@@ -69,7 +69,7 @@ func TestGrantCRUD(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 
-	g := model.Grant{Subject: "alice@example.com", TenantID: "tenant-1", GrantedAt: time.Now().UTC().Truncate(time.Second), GrantedBy: "admin"}
+	g := model.Grant{Subject: "alice@example.com", TenantID: "tenant-1", GrantedAt: time.Now().UTC().Truncate(time.Second), GrantedBy: "admin", Roles: []string{"member", "viewer"}}
 	require.NoError(t, store.CreateGrant(ctx, g))
 	require.ErrorIs(t, store.CreateGrant(ctx, g), model.ErrConflict)
 

@@ -49,3 +49,11 @@ func (s *Service) handleDeleteTenant(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (s *Service) handleRepairTenant(w http.ResponseWriter, r *http.Request) {
+	if err := s.RepairTenant.Do(r.Context(), r.PathValue("tenantId")); err != nil {
+		writeError(w, statusFor(err), err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

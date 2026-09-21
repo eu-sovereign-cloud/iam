@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/eu-sovereign-cloud/iam/internal/adapter/kubecrypt"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/kuberbac"
 	"github.com/eu-sovereign-cloud/iam/internal/adapter/kubestore"
 	"github.com/eu-sovereign-cloud/iam/internal/adapter/system"
 	"github.com/eu-sovereign-cloud/iam/internal/config"
@@ -43,6 +44,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	dynClient, err := kube.BuildDynamicClient(cfg.KubeconfigPath)
+	if err != nil {
+		return err
+	}
+	tenantRoles := kuberbac.New(dynClient)
 
 	store := kubestore.New(clientset, cfg.Namespace)
 	slog.Info("loading state from Kubernetes", "namespace", cfg.Namespace)
@@ -60,9 +66,10 @@ func run() error {
 	// per operation, each depending only on the ports it actually needs
 	// (ADR 0014). internal/service (REST) and internal/web (HTML) are both
 	// just presentation bridges over the same controllers.
-	createTenant := &controller.CreateTenant{Tenants: store, Clock: clock}
+	createTenant := &controller.CreateTenant{Tenants: store, Clock: clock, TenantRoles: tenantRoles}
 	listTenants := &controller.ListTenants{Tenants: store}
-	deleteTenant := &controller.DeleteTenant{Tenants: store}
+	deleteTenant := &controller.DeleteTenant{Tenants: store, Grants: store, TenantRoles: tenantRoles}
+	repairTenant := &controller.RepairTenant{Tenants: store, Grants: store, TenantRoles: tenantRoles}
 
 	createUser := &controller.CreateUser{Users: store, Clock: clock}
 	getUser := &controller.GetUser{Users: store}
@@ -70,10 +77,10 @@ func run() error {
 	setUserAdmin := &controller.SetUserAdmin{Users: store}
 	deleteUser := &controller.DeleteUser{Users: store}
 
-	createGrant := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock}
+	createGrant := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock, TenantRoles: tenantRoles}
 	listUserGrants := &controller.ListUserGrants{Grants: store}
-	deleteGrant := &controller.DeleteGrant{Grants: store}
-	setGrantAdmin := &controller.SetGrantAdmin{Grants: store}
+	deleteGrant := &controller.DeleteGrant{Grants: store, TenantRoles: tenantRoles}
+	setGrantAdmin := &controller.SetGrantAdmin{Grants: store, TenantRoles: tenantRoles}
 
 	createPAT := &controller.CreatePAT{PATs: store, Grants: store, Signer: signer, Clock: clock, Issuer: cfg.JWTIssuer, Audience: cfg.JWTAudience}
 	listUserPATs := &controller.ListUserPATs{PATs: store}
@@ -92,7 +99,7 @@ func run() error {
 
 	svc := &service.Service{
 		AuthenticateUser: authenticateUser,
-		CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant,
+		CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant, RepairTenant: repairTenant,
 		CreateUser: createUser, ListUsers: listUsers, SetUserAdmin: setUserAdmin, DeleteUser: deleteUser,
 		CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant, SetGrantAdmin: setGrantAdmin,
 		CreatePAT: createPAT, ListUserPATs: listUserPATs, RevokePAT: revokePAT,

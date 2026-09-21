@@ -18,6 +18,7 @@ type Service struct {
 	CreateTenant *controller.CreateTenant
 	ListTenants  *controller.ListTenants
 	DeleteTenant *controller.DeleteTenant
+	RepairTenant *controller.RepairTenant
 
 	CreateUser   *controller.CreateUser
 	ListUsers    *controller.ListUsers
@@ -42,6 +43,7 @@ func (s *Service) Router() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/tenants", s.RequireAuth(s.handleCreateTenant))
 	mux.HandleFunc("GET /api/v1/tenants", s.RequireAuth(s.handleListTenants))
 	mux.HandleFunc("DELETE /api/v1/tenants/{tenantId}", s.RequireAuth(s.handleDeleteTenant))
+	mux.HandleFunc("POST /api/v1/tenants/{tenantId}/repair", s.RequireAuth(s.handleRepairTenant))
 
 	mux.HandleFunc("POST /api/v1/users", s.RequireAuth(s.handleCreateUser))
 	mux.HandleFunc("GET /api/v1/users", s.RequireAuth(s.handleListUsers))

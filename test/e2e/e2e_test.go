@@ -60,7 +60,7 @@ func TestEndToEnd(t *testing.T) {
 
 	createTenant(t, adminPAT, "tenant-1", "Tenant One")
 	createUser(t, adminPAT, "alice@example.com", "Alice", false)
-	createGrant(t, adminPAT, "alice@example.com", "tenant-1")
+	createGrant(t, adminPAT, "alice@example.com", "tenant-1", "member")
 
 	aliceID, alicePAT := createPAT(t, adminPAT, "alice@example.com", "laptop")
 
@@ -301,9 +301,9 @@ func createUser(t *testing.T, adminPAT, subject, displayName string, admin bool)
 	assertStatus(t, http.StatusCreated, resp)
 }
 
-func createGrant(t *testing.T, adminPAT, subject, tenantID string) {
+func createGrant(t *testing.T, adminPAT, subject, tenantID, role string) {
 	t.Helper()
-	resp := doJSON(t, http.MethodPost, "/api/v1/users/"+subject+"/grants", adminPAT, map[string]string{"tenantId": tenantID})
+	resp := doJSON(t, http.MethodPost, "/api/v1/users/"+subject+"/grants", adminPAT, map[string]any{"tenantId": tenantID, "roles": []string{role}})
 	assertStatus(t, http.StatusCreated, resp)
 }
 

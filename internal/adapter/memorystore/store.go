@@ -162,6 +162,18 @@ func (s *Store) ListGrantsBySubject(_ context.Context, subject string) ([]model.
 	return out, nil
 }
 
+func (s *Store) ListGrantsByTenant(_ context.Context, tenantID string) ([]model.Grant, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []model.Grant
+	for _, g := range s.grants {
+		if g.TenantID == tenantID {
+			out = append(out, g)
+		}
+	}
+	return out, nil
+}
+
 func (s *Store) DeleteGrant(_ context.Context, subject, tenantID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

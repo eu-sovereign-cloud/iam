@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 )
@@ -10,6 +11,7 @@ type grantView struct {
 	Subject  string
 	TenantID string
 	Admin    bool
+	Roles    []string
 }
 
 type userView struct {
@@ -77,7 +79,7 @@ func (wb *Web) renderUserDetailPage(w http.ResponseWriter, r *http.Request, subj
 	}
 	grantViews := make([]grantView, 0, len(grants))
 	for _, g := range grants {
-		grantViews = append(grantViews, grantView{Subject: g.Subject, TenantID: g.TenantID, Admin: g.Admin})
+		grantViews = append(grantViews, grantView{Subject: g.Subject, TenantID: g.TenantID, Admin: g.Admin, Roles: g.Roles})
 	}
 
 	tenants, err := wb.ListTenants.Do(r.Context())
@@ -159,7 +161,8 @@ func (wb *Web) handleUsersGrant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	caller := model.IdentityFromContext(r.Context())
-	if _, err := wb.CreateGrant.Do(r.Context(), subject, r.FormValue("tenantId"), caller.Subject); err != nil {
+	roles := strings.Split(r.FormValue("roles"), ",")
+	if _, err := wb.CreateGrant.Do(r.Context(), subject, r.FormValue("tenantId"), roles, caller.Subject); err != nil {
 		wb.renderUserDetailPage(w, r, subject, "", err.Error())
 		return
 	}

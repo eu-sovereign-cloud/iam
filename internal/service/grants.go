@@ -7,7 +7,8 @@ import (
 )
 
 type createGrantRequest struct {
-	TenantID string `json:"tenantId"`
+	TenantID string   `json:"tenantId"`
+	Roles    []string `json:"roles"`
 }
 
 type patchGrantRequest struct {
@@ -15,18 +16,19 @@ type patchGrantRequest struct {
 }
 
 type grantResponse struct {
-	Subject   string `json:"subject"`
-	TenantID  string `json:"tenantId"`
-	GrantedAt string `json:"grantedAt"`
-	GrantedBy string `json:"grantedBy"`
-	Admin     bool   `json:"admin"`
+	Subject   string   `json:"subject"`
+	TenantID  string   `json:"tenantId"`
+	GrantedAt string   `json:"grantedAt"`
+	GrantedBy string   `json:"grantedBy"`
+	Admin     bool     `json:"admin"`
+	Roles     []string `json:"roles"`
 }
 
 func grantToResponse(g model.Grant) grantResponse {
 	return grantResponse{
 		Subject: g.Subject, TenantID: g.TenantID,
 		GrantedAt: g.GrantedAt.Format(timeFormat), GrantedBy: g.GrantedBy,
-		Admin: g.Admin,
+		Admin: g.Admin, Roles: g.Roles,
 	}
 }
 
@@ -37,7 +39,7 @@ func (s *Service) handleCreateGrant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	grantedBy := model.IdentityFromContext(r.Context()).Subject
-	g, err := s.CreateGrant.Do(r.Context(), r.PathValue("subject"), req.TenantID, grantedBy)
+	g, err := s.CreateGrant.Do(r.Context(), r.PathValue("subject"), req.TenantID, req.Roles, grantedBy)
 	if err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/eu-sovereign-cloud/iam/internal/adapter/memorycrypto"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/memoryrbac"
 	"github.com/eu-sovereign-cloud/iam/internal/adapter/memorystore"
 	"github.com/eu-sovereign-cloud/iam/internal/adapter/system"
 	"github.com/eu-sovereign-cloud/iam/internal/controller"
@@ -35,20 +36,22 @@ func newTestStack(t *testing.T) *testStack {
 	store := memorystore.New()
 	signer := memorycrypto.Signer{}
 	clock := system.Clock{}
+	roles := memoryrbac.New()
 
-	createTenant := &controller.CreateTenant{Tenants: store, Clock: clock}
+	createTenant := &controller.CreateTenant{Tenants: store, Clock: clock, TenantRoles: roles}
 	listTenants := &controller.ListTenants{Tenants: store}
-	deleteTenant := &controller.DeleteTenant{Tenants: store}
+	deleteTenant := &controller.DeleteTenant{Tenants: store, Grants: store, TenantRoles: roles}
+	repairTenant := &controller.RepairTenant{Tenants: store, Grants: store, TenantRoles: roles}
 
 	createUser := &controller.CreateUser{Users: store, Clock: clock}
 	listUsers := &controller.ListUsers{Users: store}
 	setUserAdmin := &controller.SetUserAdmin{Users: store}
 	deleteUser := &controller.DeleteUser{Users: store}
 
-	createGrant := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock}
+	createGrant := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock, TenantRoles: roles}
 	listUserGrants := &controller.ListUserGrants{Grants: store}
-	deleteGrant := &controller.DeleteGrant{Grants: store}
-	setGrantAdmin := &controller.SetGrantAdmin{Grants: store}
+	deleteGrant := &controller.DeleteGrant{Grants: store, TenantRoles: roles}
+	setGrantAdmin := &controller.SetGrantAdmin{Grants: store, TenantRoles: roles}
 
 	createPAT := &controller.CreatePAT{PATs: store, Grants: store, Signer: signer, Clock: clock, Issuer: "https://iam.example.com", Audience: []string{"ecp-gateway"}}
 	listUserPATs := &controller.ListUserPATs{PATs: store}
@@ -68,7 +71,7 @@ func newTestStack(t *testing.T) *testStack {
 	return &testStack{
 		svc: &service.Service{
 			AuthenticateUser: authenticateUser,
-			CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant,
+			CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant, RepairTenant: repairTenant,
 			CreateUser: createUser, ListUsers: listUsers, SetUserAdmin: setUserAdmin, DeleteUser: deleteUser,
 			CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant, SetGrantAdmin: setGrantAdmin,
 			CreatePAT: createPAT, ListUserPATs: listUserPATs, RevokePAT: revokePAT,
@@ -113,13 +116,13 @@ func TestEndToEnd_CreateUserGrantIssuePATRevoke(t *testing.T) {
 	require.Equal(t, http.StatusCreated, rec.Code)
 
 	// Admin grants bob access to it.
-	rec = doJSON(t, mux, http.MethodPost, "/api/v1/users/bob@example.com/grants", stack.adminPAT, map[string]string{"tenantId": "tenant-1"})
+	rec = doJSON(t, mux, http.MethodPost, "/api/v1/users/bob@example.com/grants", stack.adminPAT, map[string]any{"tenantId": "tenant-1", "roles": []string{"member"}})
 	require.Equal(t, http.StatusCreated, rec.Code)
 
 	// Bob is not a tenant admin: he cannot grant a third subject access.
 	_, err = stack.createUser.Do(seedCtx, "carol@example.com", "Carol", false)
 	require.NoError(t, err)
-	rec = doJSON(t, mux, http.MethodPost, "/api/v1/users/carol@example.com/grants", bobPAT, map[string]string{"tenantId": "tenant-1"})
+	rec = doJSON(t, mux, http.MethodPost, "/api/v1/users/carol@example.com/grants", bobPAT, map[string]any{"tenantId": "tenant-1", "roles": []string{"member"}})
 	require.Equal(t, http.StatusForbidden, rec.Code)
 
 	// Admin promotes bob to tenant admin of tenant-1.
@@ -133,10 +136,15 @@ func TestEndToEnd_CreateUserGrantIssuePATRevoke(t *testing.T) {
 
 	// Bob, now a tenant admin of tenant-1, may grant carol access to it —
 	// but still holds no privilege to promote her to tenant admin himself.
-	rec = doJSON(t, mux, http.MethodPost, "/api/v1/users/carol@example.com/grants", bobPAT, map[string]string{"tenantId": "tenant-1"})
+	rec = doJSON(t, mux, http.MethodPost, "/api/v1/users/carol@example.com/grants", bobPAT, map[string]any{"tenantId": "tenant-1", "roles": []string{"member"}})
 	require.Equal(t, http.StatusCreated, rec.Code)
 	rec = doJSON(t, mux, http.MethodPatch, "/api/v1/users/carol@example.com/grants/tenant-1", bobPAT, map[string]any{"admin": true})
 	require.Equal(t, http.StatusForbidden, rec.Code)
+
+	// Admin repairs tenant-1: re-applying RBAC state for existing grants
+	// must succeed and not disturb anything.
+	rec = doJSON(t, mux, http.MethodPost, "/api/v1/tenants/tenant-1/repair", stack.adminPAT, nil)
+	require.Equal(t, http.StatusNoContent, rec.Code)
 
 	// Bob (self-service) issues himself a new PAT. Per ADR 0012 the PAT
 	// itself is the signed JWT — there is no separate exchange step.

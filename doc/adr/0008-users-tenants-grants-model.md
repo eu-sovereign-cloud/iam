@@ -10,6 +10,14 @@ one, `Grant.Admin`, scoping admin rights to one tenant. Everything below
 about the global `User.Admin` flag and the entities themselves still
 stands; ADR 0016 is additive.
 
+Note: the "explicitly deferred" `Grant` → ecp `RoleAssignment`
+integration described below is no longer fully deferred — ADR 0018
+implements it, via a direct Kubernetes backchannel to ecp's
+`Role`/`RoleAssignment` CRDs rather than the `service.GrantService`
+REST-port hook this ADR originally imagined (that port no longer exists;
+see ADR 0013/0014 for the ports/controller layout it moved into). `Grant`
+also gained a `Role` field as part of that change.
+
 ## Context
 
 Issue #1 asks for a service that mints JWTs carrying a `tenants` claim (see

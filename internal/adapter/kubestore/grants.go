@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -28,6 +29,7 @@ func grantToConfigMap(g model.Grant, namespace string) *corev1.ConfigMap {
 		dataGrantedAt: g.GrantedAt.Format(time.RFC3339),
 		dataGrantedBy: g.GrantedBy,
 		dataAdmin:     strconv.FormatBool(g.Admin),
+		dataRoles:     strings.Join(g.Roles, ","),
 	}
 	return cm
 }
@@ -35,12 +37,17 @@ func grantToConfigMap(g model.Grant, namespace string) *corev1.ConfigMap {
 func grantFromConfigMap(cm *corev1.ConfigMap) model.Grant {
 	granted, _ := time.Parse(time.RFC3339, cm.Data[dataGrantedAt])
 	admin, _ := strconv.ParseBool(cm.Data[dataAdmin])
+	var roles []string
+	if raw := cm.Data[dataRoles]; raw != "" {
+		roles = strings.Split(raw, ",")
+	}
 	return model.Grant{
 		Subject:   cm.Data[dataSubject],
 		TenantID:  cm.Data[dataTenantID],
 		GrantedAt: granted,
 		GrantedBy: cm.Data[dataGrantedBy],
 		Admin:     admin,
+		Roles:     roles,
 	}
 }
 
@@ -83,6 +90,18 @@ func (s *Store) ListGrantsBySubject(_ context.Context, subject string) ([]model.
 	var out []model.Grant
 	for _, g := range s.grants {
 		if g.Subject == subject {
+			out = append(out, g)
+		}
+	}
+	return out, nil
+}
+
+func (s *Store) ListGrantsByTenant(_ context.Context, tenantID string) ([]model.Grant, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var out []model.Grant
+	for _, g := range s.grants {
+		if g.TenantID == tenantID {
 			out = append(out, g)
 		}
 	}

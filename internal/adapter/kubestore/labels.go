@@ -24,6 +24,7 @@ const (
 
 	dataGrantedAt = "granted-at"
 	dataGrantedBy = "granted-by"
+	dataRoles     = "roles"
 
 	dataName      = "name"
 	dataScope     = "scope"

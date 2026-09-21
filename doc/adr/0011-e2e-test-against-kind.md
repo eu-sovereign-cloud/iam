@@ -4,6 +4,14 @@
 
 Accepted
 
+Note: the "IAM itself still does not create `RoleAssignment` objects"
+statement in the Decision section below no longer holds — ADR 0018 has
+IAM create/manage real `Role`/`RoleAssignment` objects directly. The
+vendored-CRD compatibility check described here (`applyDemoRoleAssignment`)
+still exists as-is and is still useful (it predates and is independent of
+IAM's own writes), but asserting IAM's *own* `Role`/`RoleAssignment`
+output here too is a natural follow-up, not yet done.
+
 ## Context
 
 `internal/controller/controller_test.go` already exercises the full HTTP

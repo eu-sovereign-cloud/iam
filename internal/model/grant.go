@@ -18,4 +18,11 @@ type Grant struct {
 	// demote tenant-admin status (only a global admin can, via
 	// SetGrantAdmin — see doc/adr/0016).
 	Admin bool
+	// Roles are the ecp Role names Subject is bound to within TenantID via
+	// a RoleAssignment (see doc/adr/0018) — a RoleAssignment may grant
+	// more than one role at once. At least one is required. While Admin
+	// is true, the subject is actually bound to only TenantAdminRole
+	// instead — Roles is still stored so demoting reverts the binding to
+	// it.
+	Roles []string
 }
