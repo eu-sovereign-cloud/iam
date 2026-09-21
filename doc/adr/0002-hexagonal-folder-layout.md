@@ -20,7 +20,8 @@ Single Go module, hexagonal-flavored layout:
 ```
 cmd/iamd/main.go        wiring only
 internal/model/         domain types, no dependencies on any other internal package
-internal/service/       use cases + the ports (interfaces) they need from adapters
+internal/ports/         port interfaces (see ADR 0013), no dependencies beyond model
+internal/service/       use cases, depending on model + ports
 internal/adapter/       driven adapters implementing those ports (Kubernetes, JWT signing, hashing)
 internal/controller/    driving adapter: JSON REST over net/http
 internal/web/           driving adapter: server-rendered HTML
@@ -28,18 +29,20 @@ internal/config/        env-var configuration
 ```
 
 Dependency direction: `controller` and `web` depend on `service`; `service`
-depends on `model` and declares the ports it needs; `adapter` implements
-those ports and depends on `model`. `model` depends on nothing else in the
-module.
+depends on `model` and `ports`; `adapter` implements the interfaces `ports`
+declares and depends on `model`. `model` and `ports` depend on nothing else
+in the module (see ADR 0013 for why ports moved out of `service`).
 
 ## Consequences
 
 - Two "driving" adapters (`controller`, `web`) share the same `service`
   layer and never call each other, so business rules (e.g. only admins
   manage Tenants) are enforced once, not duplicated per UI.
-- Unlike `ecp`, ports are declared in `service` rather than a separate
-  `port` package, and there's a single Go module rather than `ecp`'s
-  multi-module `framework`/`resource` split — proportionate to IAM's much
-  smaller scope. `internal/model` having zero internal dependencies is the
-  one boundary worth being strict about, so it alone gets a `depguard` rule
-  in `.golangci.yml`.
+- ~~Unlike `ecp`, ports are declared in `service` rather than a separate
+  `port` package~~ — reversed by ADR 0013 once the number of ports and
+  their surrounding services grew past what one shared file stayed tidy
+  for; ports now live in their own `internal/ports` package, one file per
+  port, with the same "zero internal dependencies" `depguard` rule
+  `internal/model` gets. There's still a single Go module rather than
+  `ecp`'s multi-module `framework`/`resource` split — proportionate to
+  IAM's much smaller scope.

@@ -5,16 +5,17 @@ import (
 	"fmt"
 
 	"github.com/eu-sovereign-cloud/iam/internal/model"
+	"github.com/eu-sovereign-cloud/iam/internal/ports"
 )
 
 // UserService manages Users. Callers (the controller layer) are
 // responsible for enforcing that only admins invoke the mutating methods.
 type UserService struct {
-	store UserStore
-	clock Clock
+	store ports.UserStore
+	clock ports.Clock
 }
 
-func NewUserService(store UserStore, clock Clock) *UserService {
+func NewUserService(store ports.UserStore, clock ports.Clock) *UserService {
 	return &UserService{store: store, clock: clock}
 }
 

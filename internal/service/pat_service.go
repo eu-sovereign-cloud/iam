@@ -8,6 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/eu-sovereign-cloud/iam/internal/model"
+	"github.com/eu-sovereign-cloud/iam/internal/ports"
 )
 
 // noExpiryDuration is minted as the JWT's exp when a PAT is created with no
@@ -22,15 +23,15 @@ const noExpiryDuration = 100 * 365 * 24 * time.Hour
 // User act on their own subject regardless of the admin flag, and lets
 // admins act on any subject.
 type PATService struct {
-	store    PATStore
-	grants   GrantStore
-	signer   Signer
-	clock    Clock
+	store    ports.PATStore
+	grants   ports.GrantStore
+	signer   ports.Signer
+	clock    ports.Clock
 	issuer   string
 	audience string
 }
 
-func NewPATService(store PATStore, grants GrantStore, signer Signer, clock Clock, issuer, audience string) *PATService {
+func NewPATService(store ports.PATStore, grants ports.GrantStore, signer ports.Signer, clock ports.Clock, issuer, audience string) *PATService {
 	return &PATService{store: store, grants: grants, signer: signer, clock: clock, issuer: issuer, audience: audience}
 }
 

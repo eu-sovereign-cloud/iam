@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/eu-sovereign-cloud/iam/internal/model"
+	"github.com/eu-sovereign-cloud/iam/internal/ports"
 )
 
 // GrantService manages a User's access to Tenants. Callers (the controller
@@ -16,13 +17,13 @@ import (
 // IAM has no ecp credentials/access yet and the IAM-grant -> ecp-role
 // mapping isn't defined. See ADR 0008.
 type GrantService struct {
-	grants  GrantStore
-	users   UserStore
-	tenants TenantStore
-	clock   Clock
+	grants  ports.GrantStore
+	users   ports.UserStore
+	tenants ports.TenantStore
+	clock   ports.Clock
 }
 
-func NewGrantService(grants GrantStore, users UserStore, tenants TenantStore, clock Clock) *GrantService {
+func NewGrantService(grants ports.GrantStore, users ports.UserStore, tenants ports.TenantStore, clock ports.Clock) *GrantService {
 	return &GrantService{grants: grants, users: users, tenants: tenants, clock: clock}
 }
 

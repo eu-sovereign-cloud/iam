@@ -44,7 +44,7 @@ func newTestStack(t *testing.T) *testStack {
 	signer, err := adapter.LoadOrCreateSigner(ctx, client, "iam-system")
 	require.NoError(t, err)
 
-	clock := service.SystemClock{}
+	clock := adapter.SystemClock{}
 	userSvc := service.NewUserService(store, clock)
 	tenantSvc := service.NewTenantService(store, clock)
 	grantSvc := service.NewGrantService(store, store, store, clock)

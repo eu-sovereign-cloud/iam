@@ -20,7 +20,7 @@ func TestWebRoutesRenderWithoutError(t *testing.T) {
 	store := adapter.NewStore(client, "iam-system")
 	require.NoError(t, store.Load(ctx))
 
-	clock := service.SystemClock{}
+	clock := adapter.SystemClock{}
 	userSvc := service.NewUserService(store, clock)
 	tenantSvc := service.NewTenantService(store, clock)
 	grantSvc := service.NewGrantService(store, store, store, clock)

@@ -5,16 +5,17 @@ import (
 	"fmt"
 
 	"github.com/eu-sovereign-cloud/iam/internal/model"
+	"github.com/eu-sovereign-cloud/iam/internal/ports"
 )
 
 // TenantService manages Tenants. Callers (the controller layer) are
 // responsible for enforcing that only admins invoke the mutating methods.
 type TenantService struct {
-	store TenantStore
-	clock Clock
+	store ports.TenantStore
+	clock ports.Clock
 }
 
-func NewTenantService(store TenantStore, clock Clock) *TenantService {
+func NewTenantService(store ports.TenantStore, clock ports.Clock) *TenantService {
 	return &TenantService{store: store, clock: clock}
 }
 

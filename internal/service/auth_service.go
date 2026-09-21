@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/eu-sovereign-cloud/iam/internal/model"
+	"github.com/eu-sovereign-cloud/iam/internal/ports"
 )
 
 // AuthService resolves a raw bearer credential (an Authorization header
@@ -12,10 +13,10 @@ import (
 // (cookie-based) authenticate through this same use case.
 type AuthService struct {
 	pats  *PATService
-	users UserStore
+	users ports.UserStore
 }
 
-func NewAuthService(pats *PATService, users UserStore) *AuthService {
+func NewAuthService(pats *PATService, users ports.UserStore) *AuthService {
 	return &AuthService{pats: pats, users: users}
 }
 

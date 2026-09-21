@@ -52,7 +52,7 @@ func run() error {
 		return err
 	}
 
-	clock := service.SystemClock{}
+	clock := adapter.SystemClock{}
 	userSvc := service.NewUserService(store, clock)
 	tenantSvc := service.NewTenantService(store, clock)
 	grantSvc := service.NewGrantService(store, store, store, clock)
