@@ -13,6 +13,9 @@ import (
 	"time"
 
 	"github.com/eu-sovereign-cloud/iam/internal/adapter"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/kubecrypt"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/kubestore"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/system"
 	"github.com/eu-sovereign-cloud/iam/internal/config"
 	"github.com/eu-sovereign-cloud/iam/internal/controller"
 	"github.com/eu-sovereign-cloud/iam/internal/service"
@@ -41,17 +44,17 @@ func run() error {
 		return err
 	}
 
-	store := adapter.NewStore(clientset, cfg.Namespace)
+	store := kubestore.New(clientset, cfg.Namespace)
 	slog.Info("loading state from Kubernetes", "namespace", cfg.Namespace)
 	if err := store.Load(ctx); err != nil {
 		return err
 	}
 
-	signer, err := adapter.LoadOrCreateSigner(ctx, clientset, cfg.Namespace)
+	signer, err := kubecrypt.LoadOrCreate(ctx, clientset, cfg.Namespace)
 	if err != nil {
 		return err
 	}
-	clock := adapter.SystemClock{}
+	clock := system.Clock{}
 
 	// internal/controller holds all business logic: one small controller
 	// per operation, each depending only on the ports it actually needs

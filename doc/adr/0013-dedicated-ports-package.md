@@ -13,6 +13,13 @@ as "the use-case layer that owns ports" should be read as `controller`
 post-0014 — the ports package itself, its location, and its one-file-per-port
 shape are unaffected by that rename.
 
+Note: ADR 0015 later splits `internal/adapter` into one subpackage per
+driven adapter. `SystemClock`'s `internal/adapter/clock.go` below is now
+`internal/adapter/system/clock.go` (type renamed `Clock`), and the single
+`internal/adapter/assertions.go` this ADR introduces is now one small
+`assertions.go` per adapter subpackage — the compile-time-check pattern
+itself is unchanged, just relocated alongside what each one checks.
+
 ## Context
 
 Ports (`UserStore`, `TenantStore`, `GrantStore`, `PATStore`, `Signer`,

@@ -1,4 +1,4 @@
-package adapter
+package kubestore
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/eu-sovereign-cloud/iam/internal/adapter"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 )
 
@@ -41,8 +42,8 @@ func (s *Store) CreateTenant(ctx context.Context, t model.Tenant) error {
 	}
 
 	cm := tenantToConfigMap(t, s.namespace)
-	if _, err := s.client.CoreV1().ConfigMaps(s.namespace).Create(ctx, cm, metaCreateOpts()); err != nil {
-		if isAlreadyExists(err) {
+	if _, err := s.client.CoreV1().ConfigMaps(s.namespace).Create(ctx, cm, adapter.MetaCreateOpts()); err != nil {
+		if adapter.IsAlreadyExists(err) {
 			return fmt.Errorf("%w: tenant %q", model.ErrConflict, t.TenantID)
 		}
 		return fmt.Errorf("creating tenant %q: %w", t.TenantID, err)
@@ -76,7 +77,7 @@ func (s *Store) ListTenants(_ context.Context) ([]model.Tenant, error) {
 
 func (s *Store) DeleteTenant(ctx context.Context, tenantID string) error {
 	name := tenantName(tenantID)
-	if err := s.client.CoreV1().ConfigMaps(s.namespace).Delete(ctx, name, metaDeleteOpts()); err != nil && !isNotFound(err) {
+	if err := s.client.CoreV1().ConfigMaps(s.namespace).Delete(ctx, name, adapter.MetaDeleteOpts()); err != nil && !adapter.IsNotFound(err) {
 		return fmt.Errorf("deleting tenant %q: %w", tenantID, err)
 	}
 

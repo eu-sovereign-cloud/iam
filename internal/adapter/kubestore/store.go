@@ -1,7 +1,8 @@
-// Package adapter implements the driven adapters IAM's services depend on:
-// a Kubernetes ConfigMap/Secret-backed store (ADR 0001, ADR 0009) and an
-// ES256 JWT signer/verifier (ADR 0005, ADR 0012).
-package adapter
+// Package kubestore implements IAM's Kubernetes ConfigMap/Secret-backed
+// store for Users, Tenants, Grants and PATs (ADR 0001, ADR 0009) — one of
+// possibly several driven adapters under internal/adapter, alongside the
+// ES256 JWT signer.
+package kubestore
 
 import (
 	"context"
@@ -11,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/eu-sovereign-cloud/iam/internal/adapter"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 )
 
@@ -30,7 +32,7 @@ type Store struct {
 	pats    map[string]model.PAT    // key: id (the PAT JWT's jti)
 }
 
-func NewStore(client kubernetes.Interface, namespace string) *Store {
+func New(client kubernetes.Interface, namespace string) *Store {
 	return &Store{
 		client:    client,
 		namespace: namespace,
@@ -49,7 +51,7 @@ func (s *Store) Load(ctx context.Context) error {
 		return err
 	}
 
-	cms, err := s.client.CoreV1().ConfigMaps(s.namespace).List(ctx, metaListOpts(labelType))
+	cms, err := s.client.CoreV1().ConfigMaps(s.namespace).List(ctx, adapter.MetaListOpts(labelType))
 	if err != nil {
 		return fmt.Errorf("listing configmaps: %w", err)
 	}
@@ -79,16 +81,16 @@ func (s *Store) Load(ctx context.Context) error {
 }
 
 func (s *Store) ensureNamespace(ctx context.Context) error {
-	_, err := s.client.CoreV1().Namespaces().Get(ctx, s.namespace, metaGetOpts())
+	_, err := s.client.CoreV1().Namespaces().Get(ctx, s.namespace, adapter.MetaGetOpts())
 	if err == nil {
 		return nil
 	}
-	if !isNotFound(err) {
+	if !adapter.IsNotFound(err) {
 		return fmt.Errorf("getting namespace %s: %w", s.namespace, err)
 	}
 	ns := &corev1.Namespace{}
 	ns.Name = s.namespace
-	if _, err := s.client.CoreV1().Namespaces().Create(ctx, ns, metaCreateOpts()); err != nil && !isAlreadyExists(err) {
+	if _, err := s.client.CoreV1().Namespaces().Create(ctx, ns, adapter.MetaCreateOpts()); err != nil && !adapter.IsAlreadyExists(err) {
 		return fmt.Errorf("creating namespace %s: %w", s.namespace, err)
 	}
 	return nil

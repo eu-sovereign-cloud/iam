@@ -1,4 +1,4 @@
-package adapter
+package kubestore
 
 import (
 	"crypto/sha256"

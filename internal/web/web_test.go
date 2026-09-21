@@ -9,7 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 
-	"github.com/eu-sovereign-cloud/iam/internal/adapter"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/kubecrypt"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/kubestore"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/system"
 	"github.com/eu-sovereign-cloud/iam/internal/controller"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 	"github.com/eu-sovereign-cloud/iam/internal/web"
@@ -18,10 +20,10 @@ import (
 func TestWebRoutesRenderWithoutError(t *testing.T) {
 	ctx := context.Background()
 	client := k8sfake.NewClientset()
-	store := adapter.NewStore(client, "iam-system")
+	store := kubestore.New(client, "iam-system")
 	require.NoError(t, store.Load(ctx))
 
-	clock := adapter.SystemClock{}
+	clock := system.Clock{}
 	createUser := &controller.CreateUser{Users: store, Clock: clock}
 	getUser := &controller.GetUser{Users: store}
 	listUsers := &controller.ListUsers{Users: store}
@@ -35,7 +37,7 @@ func TestWebRoutesRenderWithoutError(t *testing.T) {
 	listUserGrants := &controller.ListUserGrants{Grants: store}
 	deleteGrant := &controller.DeleteGrant{Grants: store}
 
-	signer, err := adapter.LoadOrCreateSigner(ctx, client, "iam-system")
+	signer, err := kubecrypt.LoadOrCreate(ctx, client, "iam-system")
 	require.NoError(t, err)
 	createPAT := &controller.CreatePAT{PATs: store, Grants: store, Signer: signer, Clock: clock, Issuer: "https://iam.example.com", Audience: []string{"ecp-gateway"}}
 	listUserPATs := &controller.ListUserPATs{PATs: store}

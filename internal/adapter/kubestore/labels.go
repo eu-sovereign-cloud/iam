@@ -1,4 +1,4 @@
-package adapter
+package kubestore
 
 // Label and annotation keys used on the ConfigMaps/Secrets IAM manages
 // (see ADR 0001 and the data-model section of the design plan).

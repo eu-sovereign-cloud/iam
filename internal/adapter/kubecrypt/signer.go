@@ -1,4 +1,8 @@
-package adapter
+// Package kubecrypt implements IAM's ES256 JWT signer/verifier, backed by a
+// key pair kept in a Kubernetes Secret (ADR 0005, ADR 0012) — one of
+// possibly several driven adapters under internal/adapter, alongside the
+// kubestore data store.
+package kubecrypt
 
 import (
 	"context"
@@ -13,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/eu-sovereign-cloud/iam/internal/adapter"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 )
 
@@ -30,16 +35,16 @@ type Signer struct {
 	privateKey *ecdsa.PrivateKey
 }
 
-// LoadOrCreateSigner reads the signing key Secret, generating and
-// persisting a fresh ES256 key pair if it doesn't exist yet.
-func LoadOrCreateSigner(ctx context.Context, client kubernetes.Interface, namespace string) (*Signer, error) {
+// LoadOrCreate reads the signing key Secret, generating and persisting a
+// fresh ES256 key pair if it doesn't exist yet.
+func LoadOrCreate(ctx context.Context, client kubernetes.Interface, namespace string) (*Signer, error) {
 	secrets := client.CoreV1().Secrets(namespace)
 
-	sec, err := secrets.Get(ctx, signingKeySecretName, metaGetOpts())
+	sec, err := secrets.Get(ctx, signingKeySecretName, adapter.MetaGetOpts())
 	if err == nil {
 		return signerFromSecret(sec)
 	}
-	if !isNotFound(err) {
+	if !adapter.IsNotFound(err) {
 		return nil, fmt.Errorf("getting signing key secret: %w", err)
 	}
 
@@ -47,10 +52,10 @@ func LoadOrCreateSigner(ctx context.Context, client kubernetes.Interface, namesp
 	if err != nil {
 		return nil, err
 	}
-	if _, err := secrets.Create(ctx, sec, metaCreateOpts()); err != nil {
-		if isAlreadyExists(err) {
+	if _, err := secrets.Create(ctx, sec, adapter.MetaCreateOpts()); err != nil {
+		if adapter.IsAlreadyExists(err) {
 			// Lost a startup race with another instance; read back what it wrote.
-			sec, getErr := secrets.Get(ctx, signingKeySecretName, metaGetOpts())
+			sec, getErr := secrets.Get(ctx, signingKeySecretName, adapter.MetaGetOpts())
 			if getErr != nil {
 				return nil, fmt.Errorf("getting signing key secret after create race: %w", getErr)
 			}

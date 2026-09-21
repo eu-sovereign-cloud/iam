@@ -1,4 +1,4 @@
-package adapter_test
+package kubestore_test
 
 import (
 	"context"
@@ -8,14 +8,14 @@ import (
 	"github.com/stretchr/testify/require"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 
-	"github.com/eu-sovereign-cloud/iam/internal/adapter"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/kubestore"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 )
 
-func newTestStore(t *testing.T) *adapter.Store {
+func newTestStore(t *testing.T) *kubestore.Store {
 	t.Helper()
 	client := k8sfake.NewClientset()
-	store := adapter.NewStore(client, "iam-system")
+	store := kubestore.New(client, "iam-system")
 	require.NoError(t, store.Load(context.Background()))
 	return store
 }
@@ -136,7 +136,7 @@ func TestPATCreate_NameConflict(t *testing.T) {
 func TestLoadRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	client := k8sfake.NewClientset()
-	store := adapter.NewStore(client, "iam-system")
+	store := kubestore.New(client, "iam-system")
 	require.NoError(t, store.Load(ctx))
 
 	require.NoError(t, store.CreateUser(ctx, model.User{Subject: "bob", CreatedAt: time.Now().UTC().Truncate(time.Second)}))
@@ -144,7 +144,7 @@ func TestLoadRoundTrip(t *testing.T) {
 
 	// A fresh Store against the same fake client, as if iamd restarted,
 	// must see everything the first Store wrote (ADR 0009).
-	reloaded := adapter.NewStore(client, "iam-system")
+	reloaded := kubestore.New(client, "iam-system")
 	require.NoError(t, reloaded.Load(ctx))
 
 	users, err := reloaded.ListUsers(ctx)

@@ -1,4 +1,4 @@
-package adapter
+package kubestore
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/eu-sovereign-cloud/iam/internal/adapter"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 )
 
@@ -48,8 +49,8 @@ func (s *Store) CreateGrant(ctx context.Context, g model.Grant) error {
 	}
 
 	cm := grantToConfigMap(g, s.namespace)
-	if _, err := s.client.CoreV1().ConfigMaps(s.namespace).Create(ctx, cm, metaCreateOpts()); err != nil {
-		if isAlreadyExists(err) {
+	if _, err := s.client.CoreV1().ConfigMaps(s.namespace).Create(ctx, cm, adapter.MetaCreateOpts()); err != nil {
+		if adapter.IsAlreadyExists(err) {
 			return fmt.Errorf("%w: grant %s/%s", model.ErrConflict, g.Subject, g.TenantID)
 		}
 		return fmt.Errorf("creating grant %s/%s: %w", g.Subject, g.TenantID, err)
@@ -75,7 +76,7 @@ func (s *Store) ListGrantsBySubject(_ context.Context, subject string) ([]model.
 
 func (s *Store) DeleteGrant(ctx context.Context, subject, tenantID string) error {
 	name := grantName(subject, tenantID)
-	if err := s.client.CoreV1().ConfigMaps(s.namespace).Delete(ctx, name, metaDeleteOpts()); err != nil && !isNotFound(err) {
+	if err := s.client.CoreV1().ConfigMaps(s.namespace).Delete(ctx, name, adapter.MetaDeleteOpts()); err != nil && !adapter.IsNotFound(err) {
 		return fmt.Errorf("deleting grant %s/%s: %w", subject, tenantID, err)
 	}
 

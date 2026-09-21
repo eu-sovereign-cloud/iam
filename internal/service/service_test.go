@@ -12,7 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 
-	"github.com/eu-sovereign-cloud/iam/internal/adapter"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/kubecrypt"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/kubestore"
+	"github.com/eu-sovereign-cloud/iam/internal/adapter/system"
 	"github.com/eu-sovereign-cloud/iam/internal/controller"
 	"github.com/eu-sovereign-cloud/iam/internal/model"
 	"github.com/eu-sovereign-cloud/iam/internal/service"
@@ -36,13 +38,13 @@ func newTestStack(t *testing.T) *testStack {
 	ctx := context.Background()
 	client := k8sfake.NewClientset()
 
-	store := adapter.NewStore(client, "iam-system")
+	store := kubestore.New(client, "iam-system")
 	require.NoError(t, store.Load(ctx))
 
-	signer, err := adapter.LoadOrCreateSigner(ctx, client, "iam-system")
+	signer, err := kubecrypt.LoadOrCreate(ctx, client, "iam-system")
 	require.NoError(t, err)
 
-	clock := adapter.SystemClock{}
+	clock := system.Clock{}
 
 	createTenant := &controller.CreateTenant{Tenants: store, Clock: clock}
 	listTenants := &controller.ListTenants{Tenants: store}

@@ -18,7 +18,7 @@ Use ES256 (ECDSA P-256), matching one of the signing methods
 `jwt.GetSigningMethod`/`ParseVerifyKey`. The key pair is generated on first
 startup if the `iam-signing-key` Secret doesn't exist yet, storing both the
 PEM-encoded private and public key plus a random `kid`, and is loaded from
-that same Secret on every subsequent startup (`adapter.LoadOrCreateSigner`).
+that same Secret on every subsequent startup (`kubecrypt.LoadOrCreate`).
 
 ## Consequences
 
@@ -30,5 +30,5 @@ that same Secret on every subsequent startup (`adapter.LoadOrCreateSigner`).
   worth revisiting once this runs in a real deployment.
 - A startup race between two instances creating the Secret simultaneously
   is handled by falling back to reading whichever one won
-  (`adapter.LoadOrCreateSigner`), though ADR 0009 means only one instance
+  (`kubecrypt.LoadOrCreate`), though ADR 0009 means only one instance
   should be running at a time regardless.
