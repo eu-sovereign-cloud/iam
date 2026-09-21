@@ -14,6 +14,8 @@ package e2e
 import (
 	"bufio"
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -26,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,6 +73,30 @@ func TestEndToEnd(t *testing.T) {
 	require.Contains(t, claims, "iss")
 	require.Contains(t, claims, "exp")
 
+	// --- OIDC discovery, JWKS, and /userinfo (issue #2) ---
+
+	// jwks_uri/userinfo_endpoint are derived from IAM_JWT_ISSUER (set to
+	// "https://iam.e2e-test.local" below, distinct from the actual
+	// listenAddr this test talks to - the issuer is a logical identity,
+	// not a dialable address), not from baseURL.
+	doc := fetchDiscoveryDocument(t)
+	require.Equal(t, "https://iam.e2e-test.local", doc["issuer"])
+	require.Equal(t, "https://iam.e2e-test.local/.well-known/jwks.json", doc["jwks_uri"])
+	require.Equal(t, "https://iam.e2e-test.local/userinfo", doc["userinfo_endpoint"])
+
+	// The important check: the published key material actually verifies
+	// alicePAT's real signature, not just that the endpoint returns
+	// plausible-looking JSON.
+	verifyOffline(t, fetchJWKS(t), alicePAT)
+
+	userinfoResp := doJSON(t, http.MethodGet, "/userinfo", alicePAT, nil)
+	assertStatus(t, http.StatusOK, userinfoResp)
+	var info struct {
+		Subject string `json:"sub"`
+	}
+	decodeBody(t, userinfoResp, &info)
+	require.Equal(t, "alice@example.com", info.Subject)
+
 	// --- Authorization boundaries ---
 
 	assertStatus(t, http.StatusForbidden, doJSON(t, http.MethodPost, "/api/v1/tenants", alicePAT, map[string]string{"tenantId": "tenant-2"}))
@@ -79,10 +106,14 @@ func TestEndToEnd(t *testing.T) {
 	// The signed JWT is still validly signed and unexpired, but IAM's own
 	// API must now reject it because its jti is no longer known (ADR
 	// 0012's revocation gap only applies to *other* verifiers, like ecp).
+	// /userinfo must reflect the same revocation immediately (issue #2) -
+	// that's the whole point of it existing alongside offline JWKS
+	// verification.
 
 	assertStatus(t, http.StatusNoContent, doJSON(t, http.MethodDelete, "/api/v1/users/alice@example.com/pats/"+aliceID, alicePAT, nil))
 	resp := doJSON(t, http.MethodGet, "/api/v1/users/alice@example.com/pats", alicePAT, nil)
 	assertStatus(t, http.StatusUnauthorized, resp)
+	assertStatus(t, http.StatusUnauthorized, doJSON(t, http.MethodGet, "/userinfo", alicePAT, nil))
 
 	// --- Restart: ADR 0009's load-at-startup cache must reflect prior state ---
 
@@ -328,6 +359,53 @@ func listTenants(t *testing.T, adminPAT string) []map[string]any {
 	var out []map[string]any
 	decodeBody(t, resp, &out)
 	return out
+}
+
+func fetchDiscoveryDocument(t *testing.T) map[string]any {
+	t.Helper()
+	resp := doJSON(t, http.MethodGet, "/.well-known/openid-configuration", "", nil)
+	assertStatus(t, http.StatusOK, resp)
+	var doc map[string]any
+	decodeBody(t, resp, &doc)
+	return doc
+}
+
+func fetchJWKS(t *testing.T) map[string]any {
+	t.Helper()
+	resp := doJSON(t, http.MethodGet, "/.well-known/jwks.json", "", nil)
+	assertStatus(t, http.StatusOK, resp)
+	var set map[string]any
+	decodeBody(t, resp, &set)
+	return set
+}
+
+// verifyOffline confirms token's signature actually verifies against the
+// public key published in jwks (issue #2's whole point) - not just that
+// the JWKS endpoint returns plausible-looking JSON.
+func verifyOffline(t *testing.T, jwks map[string]any, token string) {
+	t.Helper()
+	keys, ok := jwks["keys"].([]any)
+	require.True(t, ok, "jwks response has no keys array: %v", jwks)
+	require.NotEmpty(t, keys, "jwks response has no keys: %v", jwks)
+	key, ok := keys[0].(map[string]any)
+	require.True(t, ok, "jwks key is not an object: %v", keys[0])
+
+	x, err := base64.RawURLEncoding.DecodeString(key["x"].(string))
+	require.NoError(t, err)
+	y, err := base64.RawURLEncoding.DecodeString(key["y"].(string))
+	require.NoError(t, err)
+	// Reassemble the uncompressed SEC1 point (0x04 || X || Y) - avoids the
+	// deprecated ecdsa.PublicKey.X/Y big.Int accessors.
+	point := append([]byte{0x04}, append(x, y...)...)
+	pub, err := ecdsa.ParseUncompressedPublicKey(elliptic.P256(), point)
+	require.NoError(t, err)
+
+	claims := jwt.RegisteredClaims{}
+	tok, err := jwt.ParseWithClaims(token, &claims, func(*jwt.Token) (any, error) {
+		return pub, nil
+	}, jwt.WithValidMethods([]string{"ES256"}))
+	require.NoError(t, err)
+	require.True(t, tok.Valid)
 }
 
 // decodeJWTClaims decodes the JWT payload without verifying its signature -

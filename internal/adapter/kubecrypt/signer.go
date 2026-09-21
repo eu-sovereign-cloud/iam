@@ -142,6 +142,14 @@ func (s *Signer) Verify(tokenString string) (model.Claims, error) {
 	return *claims, nil
 }
 
+// KeyID returns the kid of the key this Signer signs with, for JWKS
+// publication (issue #2, ADR 0019).
+func (s *Signer) KeyID() string { return s.kid }
+
+// PublicKey returns the public half of the key this Signer signs with,
+// for JWKS publication (issue #2, ADR 0019).
+func (s *Signer) PublicKey() *ecdsa.PublicKey { return &s.privateKey.PublicKey }
+
 func newKeyID() string {
 	buf := make([]byte, 8)
 	_, _ = rand.Read(buf)

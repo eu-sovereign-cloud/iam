@@ -88,6 +88,7 @@ func run() error {
 	authenticatePAT := &controller.AuthenticatePAT{PATs: store, Signer: signer, Clock: clock}
 
 	authenticateUser := &controller.AuthenticateUser{PATs: authenticatePAT, Users: store}
+	getJWKS := &controller.GetJWKS{Signer: signer}
 	ensureBootstrapAdmin := &controller.EnsureBootstrapAdmin{ListUsers: listUsers, CreateUser: createUser, CreatePAT: createPAT}
 
 	if rawPAT, created, err := ensureBootstrapAdmin.Do(ctx); err != nil {
@@ -99,6 +100,9 @@ func run() error {
 
 	svc := &service.Service{
 		AuthenticateUser: authenticateUser,
+		AuthenticatePAT:  authenticatePAT,
+		GetJWKS:          getJWKS,
+		Issuer:           cfg.JWTIssuer,
 		CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant, RepairTenant: repairTenant,
 		CreateUser: createUser, ListUsers: listUsers, SetUserAdmin: setUserAdmin, DeleteUser: deleteUser,
 		CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant, SetGrantAdmin: setGrantAdmin,
@@ -118,6 +122,7 @@ func run() error {
 	mux := http.NewServeMux()
 	mux.Handle("/api/", svc.Router())
 	mux.Handle("/web/", webUI.Router())
+	svc.RegisterDiscoveryRoutes(mux)
 
 	srv := &http.Server{Addr: cfg.ListenAddr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 

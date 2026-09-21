@@ -28,6 +28,7 @@ type testStack struct {
 	adminPAT   string
 	createUser *controller.CreateUser
 	createPAT  *controller.CreatePAT
+	revokePAT  *controller.RevokePAT
 }
 
 func newTestStack(t *testing.T) *testStack {
@@ -59,6 +60,7 @@ func newTestStack(t *testing.T) *testStack {
 
 	authenticatePAT := &controller.AuthenticatePAT{PATs: store, Signer: signer, Clock: clock}
 	authenticateUser := &controller.AuthenticateUser{PATs: authenticatePAT, Users: store}
+	getJWKS := &controller.GetJWKS{Signer: signer}
 
 	// Seeding the first admin bypasses normal auth (there's no admin yet to
 	// authenticate as), the same way controller.EnsureBootstrapAdmin does.
@@ -71,6 +73,9 @@ func newTestStack(t *testing.T) *testStack {
 	return &testStack{
 		svc: &service.Service{
 			AuthenticateUser: authenticateUser,
+			AuthenticatePAT:  authenticatePAT,
+			GetJWKS:          getJWKS,
+			Issuer:           "https://iam.example.com",
 			CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant, RepairTenant: repairTenant,
 			CreateUser: createUser, ListUsers: listUsers, SetUserAdmin: setUserAdmin, DeleteUser: deleteUser,
 			CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant, SetGrantAdmin: setGrantAdmin,
@@ -79,6 +84,7 @@ func newTestStack(t *testing.T) *testStack {
 		adminPAT:   adminPAT,
 		createUser: createUser,
 		createPAT:  createPAT,
+		revokePAT:  revokePAT,
 	}
 }
 
