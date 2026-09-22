@@ -2,15 +2,15 @@
   <title>iam architecture</title>
   <desc>
     Hexagonal architecture of the iam service. Driving adapters (internal/web,
-    internal/service) sit behind RequireAuth and call into internal/controller,
-    which depends only on internal/ports. Driven adapters (kubestore, kubecrypt,
-    kuberbac, system) implement those ports and talk to the Kubernetes API
-    server. kuberbac writes ecp's Role/RoleAssignment CRDs directly as a
-    Kubernetes backchannel (ADR 0018); the ecp gateway independently reads
-    those objects and validates JWTs issued by iam, with no direct call
-    between the two services. internal/service also registers unauthenticated
-    OIDC discovery, JWKS, /userinfo, and /healthz routes directly on the
-    top-level mux, outside RequireAuth and outside /api/* (ADR 0019, 0020).
+    internal/service) call into internal/controller, which depends only on
+    internal/ports. Driven adapters (kubestore, kubecrypt, kuberbac, system)
+    implement those ports and talk to the Kubernetes API server. kuberbac
+    writes ecp's Role/RoleAssignment CRDs directly as a Kubernetes
+    backchannel; the ecp gateway independently reads those objects and
+    validates JWTs issued by iam, with no direct call between the two
+    services. internal/service also registers unauthenticated OIDC
+    discovery, JWKS, /userinfo, and /healthz routes outside RequireAuth and
+    outside /api/*.
   </desc>
 
   <defs>
@@ -48,7 +48,7 @@
   <rect class="box-client" x="20" y="420" width="175" height="85"/>
   <text x="107" y="447" text-anchor="middle" class="lbl">API client</text>
   <text x="107" y="466" text-anchor="middle" class="sub">bearer PAT</text>
-  <text x="107" y="484" text-anchor="middle" class="sub">(a signed JWT, ADR 0012)</text>
+  <text x="107" y="484" text-anchor="middle" class="sub">(a signed JWT)</text>
 
   <!-- Driving adapters -->
   <rect class="box" x="235" y="150" width="190" height="100"/>
@@ -57,14 +57,12 @@
   <text x="330" y="216" text-anchor="middle" class="sub">requireAuth</text>
   <text x="330" y="234" text-anchor="middle" class="cap">(driving adapter)</text>
 
-  <rect class="box" x="235" y="410" width="190" height="148"/>
+  <rect class="box" x="235" y="410" width="190" height="130"/>
   <text x="330" y="438" text-anchor="middle" class="lbl">internal/service</text>
-  <text x="330" y="458" text-anchor="middle" class="sub">JSON/REST · /api/*</text>
-  <text x="330" y="476" text-anchor="middle" class="sub">RequireAuth</text>
-  <text x="330" y="494" text-anchor="middle" class="sub">+ discovery/JWKS/userinfo</text>
-  <text x="330" y="510" text-anchor="middle" class="cap">+ /healthz (unauthenticated,</text>
-  <text x="330" y="524" text-anchor="middle" class="cap">top-level, ADR 0019/0020)</text>
-  <text x="330" y="542" text-anchor="middle" class="cap">(driving adapter)</text>
+  <text x="330" y="458" text-anchor="middle" class="sub">/api/* (RequireAuth)</text>
+  <text x="330" y="476" text-anchor="middle" class="sub">+ discovery/JWKS/</text>
+  <text x="330" y="494" text-anchor="middle" class="sub">userinfo/healthz (open)</text>
+  <text x="330" y="522" text-anchor="middle" class="cap">(driving adapter)</text>
 
   <line class="arr" x1="195" y1="197" x2="233" y2="200"/>
   <line class="arr" x1="195" y1="462" x2="233" y2="460"/>
@@ -79,8 +77,8 @@
   <text x="622" y="201" text-anchor="middle" class="sub">RepairTenant · CreateUser</text>
   <text x="622" y="218" text-anchor="middle" class="sub">CreateGrant · CreatePAT</text>
   <text x="622" y="235" text-anchor="middle" class="sub">AuthenticateUser · GetJWKS · ...</text>
-  <text x="622" y="257" text-anchor="middle" class="cap">(business logic, ADR 0014)</text>
-  <text x="622" y="274" text-anchor="middle" class="cap">depends only on ports below</text>
+  <text x="622" y="260" text-anchor="middle" class="cap">business logic; depends only</text>
+  <text x="622" y="276" text-anchor="middle" class="cap">on the ports below</text>
 
   <rect x="485" y="330" width="275" height="160" fill="#ffffff" stroke="#24435e" stroke-width="1" rx="6"/>
   <text x="622" y="353" text-anchor="middle" class="lbl">internal/ports</text>
@@ -88,7 +86,7 @@
   <text x="622" y="391" text-anchor="middle" class="sub">GrantStore · PATStore</text>
   <text x="622" y="408" text-anchor="middle" class="sub">TenantRoleStore</text>
   <text x="622" y="425" text-anchor="middle" class="sub">Signer · Clock</text>
-  <text x="622" y="446" text-anchor="middle" class="cap">(interfaces, ADR 0013)</text>
+  <text x="622" y="446" text-anchor="middle" class="cap">(interfaces)</text>
 
   <line class="arr" x1="425" y1="200" x2="453" y2="220"/>
   <line class="arr" x1="425" y1="460" x2="453" y2="435"/>
@@ -97,20 +95,20 @@
   <rect class="box-driven" x="850" y="25" width="230" height="105"/>
   <text x="965" y="50" text-anchor="middle" class="lbl">adapter/kubestore</text>
   <text x="965" y="70" text-anchor="middle" class="sub">User/Tenant/Grant/PATStore</text>
-  <text x="965" y="87" text-anchor="middle" class="sub">ConfigMaps &amp; Secrets (ADR 0001)</text>
-  <text x="965" y="107" text-anchor="middle" class="cap">loaded at startup (ADR 0009)</text>
+  <text x="965" y="87" text-anchor="middle" class="sub">ConfigMaps &amp; Secrets</text>
+  <text x="965" y="107" text-anchor="middle" class="cap">loaded at startup</text>
 
   <rect class="box-driven" x="850" y="145" width="230" height="90"/>
   <text x="965" y="170" text-anchor="middle" class="lbl">adapter/kubecrypt</text>
   <text x="965" y="190" text-anchor="middle" class="sub">Signer</text>
-  <text x="965" y="208" text-anchor="middle" class="sub">ES256 key in a Secret (ADR 0005)</text>
+  <text x="965" y="208" text-anchor="middle" class="sub">ES256 key in a Secret</text>
 
   <rect class="box-driven" x="850" y="250" width="230" height="120"/>
   <text x="965" y="275" text-anchor="middle" class="lbl">adapter/kuberbac</text>
   <text x="965" y="295" text-anchor="middle" class="sub">TenantRoleStore</text>
   <text x="965" y="312" text-anchor="middle" class="sub">writes ecp's Role/RoleAssignment</text>
   <text x="965" y="329" text-anchor="middle" class="sub">CRDs — Kubernetes backchannel</text>
-  <text x="965" y="349" text-anchor="middle" class="cap">(ADR 0018, not ecp's REST API)</text>
+  <text x="965" y="349" text-anchor="middle" class="cap">(not ecp's REST API)</text>
 
   <rect class="box-driven" x="850" y="385" width="230" height="70"/>
   <text x="965" y="410" text-anchor="middle" class="lbl">adapter/system</text>
@@ -119,7 +117,7 @@
   <rect class="box-dashed" x="850" y="470" width="230" height="90"/>
   <text x="965" y="495" text-anchor="middle" class="lbl">in-memory test doubles</text>
   <text x="965" y="514" text-anchor="middle" class="sub">memorystore · memoryrbac</text>
-  <text x="965" y="531" text-anchor="middle" class="cap">memorycrypto (ADR 0017)</text>
+  <text x="965" y="531" text-anchor="middle" class="cap">memorycrypto</text>
 
   <line class="arr" x1="760" y1="355" x2="848" y2="65"/>
   <line class="arr" x1="760" y1="375" x2="848" y2="180"/>
@@ -147,7 +145,7 @@
   <rect class="box-ext" stroke-dasharray="5 4" x="1110" y="440" width="200" height="145"/>
   <text x="1210" y="465" text-anchor="middle" class="lbl">ecp gateway</text>
   <text x="1210" y="486" text-anchor="middle" class="sub">validates JWTs issued</text>
-  <text x="1210" y="503" text-anchor="middle" class="sub">by iam (iss/aud, ADR 0003)</text>
+  <text x="1210" y="503" text-anchor="middle" class="sub">by iam (iss/aud)</text>
   <text x="1210" y="524" text-anchor="middle" class="sub">reads the Role/RoleAssignment</text>
   <text x="1210" y="541" text-anchor="middle" class="sub">objects above</text>
   <text x="1210" y="561" text-anchor="middle" class="cap">never called by iam directly</text>
@@ -156,7 +154,7 @@
 
   <!-- issued JWT used directly against ecp -->
   <path class="arrD" d="M 107,507 C 107,660 1108,660 1108,490" />
-  <text x="600" y="690" text-anchor="middle" class="cap">issued PAT (JWT) is used directly against ecp's API — iam is never in that request path (ADR 0012)</text>
+  <text x="600" y="690" text-anchor="middle" class="cap">issued PAT (JWT) is used directly against ecp's API — iam is never in that request path</text>
 
   <!-- Legend -->
   <line class="arr" x1="40" y1="735" x2="80" y2="735"/>

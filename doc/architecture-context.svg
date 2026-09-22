@@ -2,15 +2,13 @@
   <title>iam and ecp system context</title>
   <desc>
     System-level view: iam and ecp run as separate services inside the same
-    Kubernetes cluster. Today they coordinate only through the Kubernetes
-    API: iam writes its own state (ConfigMaps/Secrets) and ecp's
-    Role/RoleAssignment CRDs (ADR 0018 backchannel); ecp independently
-    reads/writes its own resources in the same API server and validates the
-    JWTs iam issues. iam's userinfo/JWKS endpoints have since shipped
-    (issue #2, ADR 0019), so ecp could call iam directly to check whether a
-    given PAT has been revoked — it doesn't do that yet. Admins reach iam
-    directly; tenant/workload clients use an iam-issued PAT (JWT) directly
-    against ecp's own API.
+    Kubernetes cluster and coordinate only through the Kubernetes API: iam
+    writes its own state plus ecp's Role/RoleAssignment CRDs as a
+    backchannel; ecp independently reads/writes its own resources and
+    validates the JWTs iam issues. iam also publishes /userinfo and JWKS
+    endpoints ecp could call directly to check PAT revocation status, but
+    doesn't yet. Admins reach iam directly; tenant/workload clients use an
+    iam-issued PAT (JWT) directly against ecp's own API.
   </desc>
 
   <defs>
@@ -38,7 +36,7 @@
 
   <rect x="0" y="0" width="1300" height="760" fill="#ffffff"/>
   <text x="650" y="30" text-anchor="middle" font-size="20" font-weight="700" fill="#16232e">iam &amp; ecp — system context</text>
-  <text x="650" y="50" text-anchor="middle" font-size="13" fill="#4a5c6b">two independent services; iam publishes a userinfo/JWKS endpoint ecp could call directly (issue #2) but doesn't yet</text>
+  <text x="650" y="50" text-anchor="middle" font-size="13" fill="#4a5c6b">two independent services, coordinating only through the Kubernetes API</text>
 
   <!-- Cluster boundary -->
   <rect class="cluster" x="330" y="85" width="650" height="480"/>
@@ -46,41 +44,33 @@
 
   <!-- Kubernetes API server -->
   <rect class="box-k8s" x="530" y="135" width="250" height="95"/>
-  <text x="655" y="160" text-anchor="middle" class="lbl">Kubernetes API server</text>
-  <text x="655" y="180" text-anchor="middle" class="sub">cluster control plane (etcd-backed)</text>
-  <text x="655" y="198" text-anchor="middle" class="cap">the only channel between iam and ecp</text>
+  <text x="655" y="165" text-anchor="middle" class="lbl">Kubernetes API server</text>
+  <text x="655" y="188" text-anchor="middle" class="sub">the only channel between iam and ecp</text>
 
   <!-- iam -->
   <rect class="box-iam" x="370" y="320" width="250" height="150"/>
-  <text x="495" y="350" text-anchor="middle" class="lblBig">iam</text>
-  <text x="495" y="372" text-anchor="middle" class="sub">this repo — polyfill identity service</text>
-  <text x="495" y="390" text-anchor="middle" class="sub">single Pod, single replica (ADR 0009)</text>
-  <text x="495" y="408" text-anchor="middle" class="sub">issues JWTs (PATs) that ecp validates</text>
+  <text x="495" y="360" text-anchor="middle" class="lblBig">iam</text>
+  <text x="495" y="386" text-anchor="middle" class="sub">this repo — polyfill identity service</text>
+  <text x="495" y="406" text-anchor="middle" class="sub">issues JWTs (PATs) that ecp validates</text>
   <text x="495" y="429" text-anchor="middle" class="cap">manages Users, Tenants, Grants, PATs</text>
-  <text x="495" y="445" text-anchor="middle" class="cap">see doc/architecture.svg for internals</text>
 
   <!-- ecp -->
   <rect class="box-ecp" x="660" y="320" width="270" height="150"/>
-  <text x="795" y="350" text-anchor="middle" class="lblBig">ecp</text>
-  <text x="795" y="372" text-anchor="middle" class="sub">SECA gateway + control plane</text>
-  <text x="795" y="390" text-anchor="middle" class="sub">(separate project, not in this repo)</text>
-  <text x="795" y="408" text-anchor="middle" class="sub">validates JWTs issued by iam</text>
-  <text x="795" y="429" text-anchor="middle" class="cap">owns Tenant/Workspace/Role/...</text>
-  <text x="795" y="445" text-anchor="middle" class="cap">RoleAssignment CRDs in its namespaces</text>
+  <text x="795" y="360" text-anchor="middle" class="lblBig">ecp</text>
+  <text x="795" y="386" text-anchor="middle" class="sub">SECA gateway + control plane</text>
+  <text x="795" y="406" text-anchor="middle" class="sub">validates JWTs issued by iam</text>
+  <text x="795" y="429" text-anchor="middle" class="cap">owns Tenant/Workspace/Role/... CRDs</text>
 
   <!-- iam <-> k8s api -->
   <line class="arr" x1="505" y1="320" x2="598" y2="234"/>
-  <text x="365" y="262" class="cap">writes iam's own state</text>
-  <text x="365" y="278" class="cap">(ConfigMaps/Secrets, ADR 0001)</text>
-  <text x="365" y="294" class="cap">+ ecp's Role/RoleAssignment CRDs</text>
-  <text x="365" y="310" class="cap">as a backchannel (ADR 0018)</text>
+  <text x="365" y="252" class="cap">writes its own state +</text>
+  <text x="365" y="268" class="cap">ecp's Role/RoleAssignment</text>
+  <text x="365" y="284" class="cap">CRDs</text>
 
   <!-- ecp <-> k8s api -->
   <line class="arr" x1="790" y1="320" x2="715" y2="234"/>
-  <text x="935" y="262" class="cap">reads/writes its own</text>
-  <text x="935" y="278" class="cap">CRDs and namespaces —</text>
-  <text x="935" y="294" class="cap">including the Role/</text>
-  <text x="935" y="310" class="cap">RoleAssignment iam wrote</text>
+  <text x="935" y="270" class="cap">reads/writes its own CRDs,</text>
+  <text x="935" y="286" class="cap">incl. what iam wrote</text>
 
   <!-- External: admin/browser -->
   <rect class="box-client" x="40" y="200" width="200" height="70"/>
@@ -103,15 +93,14 @@
 
   <line class="arr" x1="1050" y1="408" x2="932" y2="460"/>
 
-  <!-- Planned direct dependency: ecp -> iam userinfo/JWKS (issue #2) -->
+  <!-- Possible direct dependency: ecp -> iam userinfo/JWKS -->
   <path class="arrD" d="M 700,470 C 660,510 590,510 560,470" />
-  <text x="630" y="590" text-anchor="middle" class="cap">iam publishes /userinfo + JWKS (issue #2, ADR 0019) so ecp could check PAT</text>
-  <text x="630" y="606" text-anchor="middle" class="cap">revocation status directly — ecp doesn't call them yet; today, RBAC via the</text>
-  <text x="630" y="622" text-anchor="middle" class="cap">Kubernetes API above is the only coordination actually used between the two</text>
+  <text x="630" y="598" text-anchor="middle" class="cap">iam publishes /userinfo + JWKS so ecp could check PAT revocation directly</text>
+  <text x="630" y="614" text-anchor="middle" class="cap">— ecp doesn't call them yet</text>
 
   <!-- Legend -->
   <line class="arr" x1="60" y1="695" x2="100" y2="695"/>
   <text x="108" y="700" class="cap">reads / writes</text>
   <line class="arrD" x1="260" y1="695" x2="300" y2="695"/>
-  <text x="308" y="700" class="cap">possible direct dependency, not used by ecp yet</text>
+  <text x="308" y="700" class="cap">not used by ecp yet</text>
 </svg>
