@@ -45,9 +45,12 @@ revocation status — ecp doesn't do that yet (see ADR 0019's Context).
 
 Zooming into iam itself, it follows a hexagonal layout (ADR 0002): two driving adapters,
 `internal/web` (a server-rendered HTML UI) and `internal/service` (the
-JSON/REST API), both sit behind a `RequireAuth` check and call into
-`internal/controller` — the framework-free core holding all business
-logic (ADR 0014). The core depends only on the interfaces in
+JSON/REST API), call into `internal/controller` — the framework-free core
+holding all business logic (ADR 0014). Both `/web/*` and `/api/*` sit
+behind a `RequireAuth` check; `internal/service` also registers the
+unauthenticated OIDC discovery, JWKS, `/userinfo`, and `/healthz` routes
+directly on the top-level mux, outside both `RequireAuth` and `/api/*`
+(ADR 0019, ADR 0020). The core depends only on the interfaces in
 `internal/ports`, which production adapters under `internal/adapter/*`
 implement against Kubernetes: `kubestore` and `kubecrypt` for iam's own
 state (ConfigMaps/Secrets), and `kuberbac`, which writes ecp's
@@ -139,7 +142,8 @@ curl -s -H "Authorization: Bearer $PAT" localhost:8080/userinfo
 
 ## Deploying to Kubernetes
 
-A Helm chart is published alongside every tagged release at
+Every tagged release publishes both a Docker image
+(`ghcr.io/eu-sovereign-cloud/iam:<tag>`) and a Helm chart at
 `oci://ghcr.io/eu-sovereign-cloud/charts/iam` (ADR 0020):
 
 ```sh
