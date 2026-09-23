@@ -9,6 +9,7 @@ import (
 type createGrantRequest struct {
 	TenantID string   `json:"tenantId"`
 	Roles    []string `json:"roles"`
+	Admin    bool     `json:"admin"`
 }
 
 type patchGrantRequest struct {
@@ -39,7 +40,7 @@ func (s *Service) handleCreateGrant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	grantedBy := model.IdentityFromContext(r.Context()).Subject
-	g, err := s.CreateGrant.Do(r.Context(), r.PathValue("subject"), req.TenantID, req.Roles, grantedBy)
+	g, err := s.CreateGrant.Do(r.Context(), r.PathValue("subject"), req.TenantID, req.Roles, grantedBy, req.Admin)
 	if err != nil {
 		writeError(w, statusFor(err), err.Error())
 		return

@@ -25,7 +25,7 @@ func TestRepairTenant_ReappliesAndPrunes(t *testing.T) {
 	_, err := createTenant.Do(ctx, "tenant-1", "Tenant One")
 	require.NoError(t, err)
 	require.NoError(t, store.CreateUser(ctx, model.User{Subject: "alice", CreatedAt: clock.now}))
-	_, err = createGrant.Do(ctx, "alice", "tenant-1", []string{"member"}, "admin")
+	_, err = createGrant.Do(ctx, "alice", "tenant-1", []string{"member"}, "admin", false)
 	require.NoError(t, err)
 
 	// Drift: the Role and RoleAssignment ecp holds diverge from IAM's

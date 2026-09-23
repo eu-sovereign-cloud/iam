@@ -29,6 +29,9 @@ func (c *CreateTenant) Do(ctx context.Context, tenantID, displayName string) (mo
 	if tenantID == "" {
 		return model.Tenant{}, fmt.Errorf("%w: tenantId is required", model.ErrInvalid)
 	}
+	if err := model.ValidateDNS1123Label("tenantId", tenantID); err != nil {
+		return model.Tenant{}, err
+	}
 	t := model.Tenant{
 		TenantID:    tenantID,
 		DisplayName: strings.TrimSpace(displayName),

@@ -68,7 +68,7 @@ func (wb *Web) renderUserDetailPage(w http.ResponseWriter, r *http.Request, subj
 
 	user, err := wb.GetUser.Do(r.Context(), subject)
 	if err != nil {
-		http.NotFound(w, r)
+		http.Error(w, err.Error(), statusFor(err))
 		return
 	}
 
@@ -162,7 +162,8 @@ func (wb *Web) handleUsersGrant(w http.ResponseWriter, r *http.Request) {
 	}
 	caller := model.IdentityFromContext(r.Context())
 	roles := strings.Split(r.FormValue("roles"), ",")
-	if _, err := wb.CreateGrant.Do(r.Context(), subject, r.FormValue("tenantId"), roles, caller.Subject); err != nil {
+	admin := r.FormValue("admin") == "true"
+	if _, err := wb.CreateGrant.Do(r.Context(), subject, r.FormValue("tenantId"), roles, caller.Subject, admin); err != nil {
 		wb.renderUserDetailPage(w, r, subject, "", err.Error())
 		return
 	}

@@ -42,8 +42,22 @@ func (wb *Web) renderPATsPage(w http.ResponseWriter, r *http.Request, newSecret,
 	for _, p := range pats {
 		views = append(views, patView{ID: p.ID, Name: p.Name, CreatedAt: p.CreatedAt.Format(timeFormat), ExpiresAt: formatExpiry(p.ExpiresAt)})
 	}
+
+	var isTenantAdmin bool
+	if user.Admin {
+		isTenantAdmin = true
+	} else {
+		adminOf, err := wb.tenantAdminOf(r.Context())
+		if err != nil {
+			http.Error(w, err.Error(), statusFor(err))
+			return
+		}
+		isTenantAdmin = len(adminOf) > 0
+	}
+
 	wb.render(w, "pats.html", map[string]any{
 		"User": user, "PATs": views, "NewSecret": newSecret, "Error": errMsg, "Active": "pats",
+		"IsTenantAdmin": isTenantAdmin,
 	})
 }
 

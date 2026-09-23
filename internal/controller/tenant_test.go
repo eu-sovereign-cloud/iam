@@ -35,6 +35,17 @@ func TestCreateTenant_RequiresNonBlankID(t *testing.T) {
 	require.ErrorIs(t, err, model.ErrInvalid)
 }
 
+func TestCreateTenant_RequiresDNS1123ID(t *testing.T) {
+	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
+	create := &controller.CreateTenant{Tenants: memorystore.New(), Clock: fakeClock{now: time.Now()}, TenantRoles: memoryrbac.New()}
+
+	_, err := create.Do(ctx, "Tenant_One", "Tenant One")
+	require.ErrorIs(t, err, model.ErrInvalid)
+
+	_, err = create.Do(ctx, "tenant-one", "Tenant One")
+	require.NoError(t, err, "a valid DNS-1123 label must still be accepted")
+}
+
 func TestCreateTenant_RequiresAdmin(t *testing.T) {
 	ctx := model.WithIdentity(context.Background(), model.User{Subject: "alice"})
 	create := &controller.CreateTenant{Tenants: memorystore.New(), Clock: fakeClock{now: time.Now()}, TenantRoles: memoryrbac.New()}
@@ -65,7 +76,7 @@ func TestDeleteTenant_RequiresNoGrants(t *testing.T) {
 	_, err := create.Do(ctx, "tenant-1", "Tenant One")
 	require.NoError(t, err)
 	require.NoError(t, store.CreateUser(ctx, model.User{Subject: "alice", CreatedAt: clock.now}))
-	_, err = createGrant.Do(ctx, "alice", "tenant-1", []string{"member"}, "admin")
+	_, err = createGrant.Do(ctx, "alice", "tenant-1", []string{"member"}, "admin", false)
 	require.NoError(t, err)
 
 	err = deleteTenant.Do(ctx, "tenant-1")
