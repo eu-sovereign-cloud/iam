@@ -67,6 +67,7 @@ func run() error {
 	// (ADR 0014). internal/service (REST) and internal/web (HTML) are both
 	// just presentation bridges over the same controllers.
 	createTenant := &controller.CreateTenant{Tenants: store, Clock: clock, TenantRoles: tenantRoles}
+	getTenant := &controller.GetTenant{Tenants: store}
 	listTenants := &controller.ListTenants{Tenants: store}
 	deleteTenant := &controller.DeleteTenant{Tenants: store, Grants: store, TenantRoles: tenantRoles}
 	repairTenant := &controller.RepairTenant{Tenants: store, Grants: store, TenantRoles: tenantRoles}
@@ -79,6 +80,7 @@ func run() error {
 
 	createGrant := &controller.CreateGrant{Grants: store, Users: store, Tenants: store, Clock: clock, TenantRoles: tenantRoles}
 	listUserGrants := &controller.ListUserGrants{Grants: store}
+	listTenantGrants := &controller.ListTenantGrants{Grants: store}
 	deleteGrant := &controller.DeleteGrant{Grants: store, TenantRoles: tenantRoles}
 	setGrantAdmin := &controller.SetGrantAdmin{Grants: store, TenantRoles: tenantRoles}
 
@@ -110,9 +112,9 @@ func run() error {
 	}
 	webUI, err := web.New(
 		authenticateUser,
-		createTenant, listTenants, deleteTenant,
+		createTenant, getTenant, listTenants, deleteTenant, repairTenant,
 		createUser, getUser, listUsers, deleteUser,
-		createGrant, listUserGrants, deleteGrant, setGrantAdmin,
+		createGrant, listUserGrants, listTenantGrants, deleteGrant, setGrantAdmin,
 		createPAT, listUserPATs, revokePAT,
 	)
 	if err != nil {

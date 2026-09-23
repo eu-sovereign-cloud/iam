@@ -27,18 +27,21 @@ type Web struct {
 	AuthenticateUser *controller.AuthenticateUser
 
 	CreateTenant *controller.CreateTenant
+	GetTenant    *controller.GetTenant
 	ListTenants  *controller.ListTenants
 	DeleteTenant *controller.DeleteTenant
+	RepairTenant *controller.RepairTenant
 
 	CreateUser *controller.CreateUser
 	GetUser    *controller.GetUser
 	ListUsers  *controller.ListUsers
 	DeleteUser *controller.DeleteUser
 
-	CreateGrant    *controller.CreateGrant
-	ListUserGrants *controller.ListUserGrants
-	DeleteGrant    *controller.DeleteGrant
-	SetGrantAdmin  *controller.SetGrantAdmin
+	CreateGrant      *controller.CreateGrant
+	ListUserGrants   *controller.ListUserGrants
+	ListTenantGrants *controller.ListTenantGrants
+	DeleteGrant      *controller.DeleteGrant
+	SetGrantAdmin    *controller.SetGrantAdmin
 
 	CreatePAT    *controller.CreatePAT
 	ListUserPATs *controller.ListUserPATs
@@ -49,9 +52,9 @@ type Web struct {
 
 func New(
 	authenticateUser *controller.AuthenticateUser,
-	createTenant *controller.CreateTenant, listTenants *controller.ListTenants, deleteTenant *controller.DeleteTenant,
+	createTenant *controller.CreateTenant, getTenant *controller.GetTenant, listTenants *controller.ListTenants, deleteTenant *controller.DeleteTenant, repairTenant *controller.RepairTenant,
 	createUser *controller.CreateUser, getUser *controller.GetUser, listUsers *controller.ListUsers, deleteUser *controller.DeleteUser,
-	createGrant *controller.CreateGrant, listUserGrants *controller.ListUserGrants, deleteGrant *controller.DeleteGrant, setGrantAdmin *controller.SetGrantAdmin,
+	createGrant *controller.CreateGrant, listUserGrants *controller.ListUserGrants, listTenantGrants *controller.ListTenantGrants, deleteGrant *controller.DeleteGrant, setGrantAdmin *controller.SetGrantAdmin,
 	createPAT *controller.CreatePAT, listUserPATs *controller.ListUserPATs, revokePAT *controller.RevokePAT,
 ) (*Web, error) {
 	tmpl, err := template.ParseFS(templateFS, "templates/*.html")
@@ -60,9 +63,9 @@ func New(
 	}
 	return &Web{
 		AuthenticateUser: authenticateUser,
-		CreateTenant:     createTenant, ListTenants: listTenants, DeleteTenant: deleteTenant,
+		CreateTenant:     createTenant, GetTenant: getTenant, ListTenants: listTenants, DeleteTenant: deleteTenant, RepairTenant: repairTenant,
 		CreateUser: createUser, GetUser: getUser, ListUsers: listUsers, DeleteUser: deleteUser,
-		CreateGrant: createGrant, ListUserGrants: listUserGrants, DeleteGrant: deleteGrant, SetGrantAdmin: setGrantAdmin,
+		CreateGrant: createGrant, ListUserGrants: listUserGrants, ListTenantGrants: listTenantGrants, DeleteGrant: deleteGrant, SetGrantAdmin: setGrantAdmin,
 		CreatePAT: createPAT, ListUserPATs: listUserPATs, RevokePAT: revokePAT,
 		tmpl: tmpl,
 	}, nil
@@ -91,7 +94,12 @@ func (wb *Web) Router() *http.ServeMux {
 
 	mux.HandleFunc("GET /web/tenants", wb.requireAuth(wb.handleTenantsPage))
 	mux.HandleFunc("POST /web/tenants", wb.requireAuth(wb.handleTenantsCreate))
+	mux.HandleFunc("GET /web/tenants/{tenantId}", wb.requireAuth(wb.handleTenantDetailPage))
 	mux.HandleFunc("POST /web/tenants/{tenantId}/delete", wb.requireAuth(wb.handleTenantsDelete))
+	mux.HandleFunc("POST /web/tenants/{tenantId}/grants", wb.requireAuth(wb.handleTenantsGrant))
+	mux.HandleFunc("POST /web/tenants/{tenantId}/grants/{subject}/revoke", wb.requireAuth(wb.handleTenantsRevokeGrant))
+	mux.HandleFunc("POST /web/tenants/{tenantId}/grants/{subject}/admin", wb.requireAuth(wb.handleTenantsSetGrantAdmin))
+	mux.HandleFunc("POST /web/tenants/{tenantId}/repair", wb.requireAuth(wb.handleTenantsRepair))
 
 	mux.HandleFunc("GET /web/users", wb.requireAuth(wb.handleUsersPage))
 	mux.HandleFunc("POST /web/users", wb.requireAuth(wb.handleUsersCreate))

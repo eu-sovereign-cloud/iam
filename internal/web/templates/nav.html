@@ -10,8 +10,10 @@
 
   <nav class="rail-nav">
     <a href="/web/pats"{{if eq .Active "pats"}} class="active" aria-current="page"{{end}}>Tokens</a>
-    {{if .User.Admin}}
+    {{if or .User.Admin .IsTenantAdmin}}
     <a href="/web/tenants"{{if eq .Active "tenants"}} class="active" aria-current="page"{{end}}>Tenants</a>
+    {{end}}
+    {{if .User.Admin}}
     <a href="/web/users"{{if eq .Active "users"}} class="active" aria-current="page"{{end}}>Users</a>
     {{end}}
   </nav>

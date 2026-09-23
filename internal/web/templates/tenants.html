@@ -26,28 +26,35 @@
         <tbody>
           {{range .Tenants}}
           <tr>
-            <td><code>{{.TenantID}}</code></td>
+            <td><a href="/web/tenants/{{.TenantID}}"><code>{{.TenantID}}</code></a></td>
             <td>{{if .DisplayName}}{{.DisplayName}}{{else}}<span class="muted">—</span>{{end}}</td>
             <td>{{.CreatedAt}}</td>
             <td class="register-action">
+              {{if $.User.Admin}}
               <form method="post" action="/web/tenants/{{.TenantID}}/delete">
                 <button type="submit" class="link-button link-button-danger">Remove</button>
               </form>
+              {{end}}
             </td>
           </tr>
           {{end}}
         </tbody>
       </table>
       {{else}}
+      {{if .User.Admin}}
       <p class="empty">No tenants are registered yet. Add one below before granting anyone access to it.</p>
+      {{else}}
+      <p class="empty">You are not a tenant admin of any tenant.</p>
+      {{end}}
       {{end}}
 
+      {{if .User.Admin}}
       <section class="panel">
         <h2>Register a tenant</h2>
         <form method="post" action="/web/tenants" class="form form-row">
           <div class="field">
             <label for="tenantId">Tenant ID</label>
-            <input id="tenantId" type="text" name="tenantId" placeholder="e.g. acme-prod" required>
+            <input id="tenantId" type="text" name="tenantId" placeholder="e.g. acme-prod" maxlength="63" title="Lowercase alphanumeric characters or '-', max 63 chars, must start and end alphanumeric (a Kubernetes-style name)." required>
           </div>
           <div class="field">
             <label for="displayName">Display name</label>
@@ -56,6 +63,7 @@
           <button type="submit">Register</button>
         </form>
       </section>
+      {{end}}
     </main>
   </div>
 </body>
