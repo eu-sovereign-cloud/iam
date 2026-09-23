@@ -23,6 +23,9 @@ func (c *CreateUser) Do(ctx context.Context, subject, displayName string, admin 
 	if subject == "" {
 		return model.User{}, fmt.Errorf("%w: subject is required", model.ErrInvalid)
 	}
+	if err := model.ValidateSubject(subject); err != nil {
+		return model.User{}, err
+	}
 	u := model.User{
 		Subject:     subject,
 		DisplayName: strings.TrimSpace(displayName),

@@ -31,6 +31,22 @@ func TestCreateUser_RequiresNonBlankSubject(t *testing.T) {
 	require.ErrorIs(t, err, model.ErrInvalid)
 }
 
+func TestCreateUser_ValidatesSubjectCharset(t *testing.T) {
+	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
+	create := &controller.CreateUser{Users: memorystore.New(), Clock: fakeClock{now: time.Now()}}
+
+	_, err := create.Do(ctx, "alice <script>", "Alice", false)
+	require.ErrorIs(t, err, model.ErrInvalid)
+
+	// Both a plain identifier and an email-style subject must still be
+	// accepted - Subject deliberately isn't DNS-1123 (that would forbid
+	// '@' and reject every email-style subject this app otherwise uses).
+	_, err = create.Do(ctx, "admin2", "", false)
+	require.NoError(t, err)
+	_, err = create.Do(ctx, "alice@example.com", "Alice", false)
+	require.NoError(t, err)
+}
+
 func TestSetUserAdmin(t *testing.T) {
 	ctx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
 	clock := fakeClock{now: time.Now()}

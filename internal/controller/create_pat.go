@@ -23,7 +23,10 @@ const noExpiryDuration = 100 * 365 * 24 * time.Hour
 // metadata record of it. The signed JWT is returned once and never
 // persisted (ADR 0012) — only its jti and bookkeeping metadata are. It is
 // self-service: callers let a User act on their own subject regardless of
-// the admin flag, and let admins act on any subject.
+// the admin flag, and let admins act on any subject. name is required —
+// the PAT's own ID is an opaque jti, so an unnamed PAT would be
+// unmanageable in any listing (there'd be nothing to tell it apart from
+// another unnamed one at a glance).
 type CreatePAT struct {
 	PATs     ports.PATStore
 	Grants   ports.GrantStore
@@ -38,6 +41,12 @@ func (c *CreatePAT) Do(ctx context.Context, subject, name string, scope *model.T
 	name = strings.TrimSpace(name)
 	if subject == "" {
 		return model.PAT{}, "", fmt.Errorf("%w: subject is required", model.ErrInvalid)
+	}
+	if name == "" {
+		return model.PAT{}, "", fmt.Errorf("%w: name is required", model.ErrInvalid)
+	}
+	if err := model.ValidateDNS1123Label("name", name); err != nil {
+		return model.PAT{}, "", err
 	}
 	if err := model.RequireSelfOrAdmin(ctx, subject); err != nil {
 		return model.PAT{}, "", err

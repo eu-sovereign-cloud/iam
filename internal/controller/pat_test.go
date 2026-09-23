@@ -82,12 +82,29 @@ func TestCreatePAT_NameConflictPerSubject(t *testing.T) {
 	// A different subject may still use the same name.
 	_, _, err = create.Do(adminCtx, "bob", "laptop", nil, 0)
 	require.NoError(t, err)
+}
 
-	// Unnamed PATs never conflict with each other.
-	_, _, err = create.Do(adminCtx, "alice", "", nil, 0)
-	require.NoError(t, err)
-	_, _, err = create.Do(adminCtx, "alice", "  ", nil, 0)
-	require.NoError(t, err)
+func TestCreatePAT_RequiresName(t *testing.T) {
+	adminCtx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
+	create := &controller.CreatePAT{PATs: memorystore.New(), Grants: memorystore.New(), Signer: memorycrypto.Signer{}, Clock: fakeClock{now: time.Now()}, Issuer: "iss", Audience: []string{"aud"}}
+
+	_, _, err := create.Do(adminCtx, "alice", "", nil, 0)
+	require.ErrorIs(t, err, model.ErrInvalid)
+
+	// Whitespace-only doesn't count either.
+	_, _, err = create.Do(adminCtx, "alice", "   ", nil, 0)
+	require.ErrorIs(t, err, model.ErrInvalid)
+}
+
+func TestCreatePAT_RequiresDNS1123Name(t *testing.T) {
+	adminCtx := model.WithIdentity(context.Background(), model.User{Subject: "admin", Admin: true})
+	create := &controller.CreatePAT{PATs: memorystore.New(), Grants: memorystore.New(), Signer: memorycrypto.Signer{}, Clock: fakeClock{now: time.Now()}, Issuer: "iss", Audience: []string{"aud"}}
+
+	_, _, err := create.Do(adminCtx, "alice", "My Laptop", nil, 0)
+	require.ErrorIs(t, err, model.ErrInvalid)
+
+	_, _, err = create.Do(adminCtx, "alice", "my-laptop", nil, 0)
+	require.NoError(t, err, "a valid DNS-1123 label must still be accepted")
 }
 
 func TestCreatePAT_SelfOrAdmin(t *testing.T) {

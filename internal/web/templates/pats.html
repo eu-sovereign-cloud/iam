@@ -59,7 +59,7 @@
         <form method="post" action="/web/pats" class="form form-row">
           <div class="field">
             <label for="name">Name</label>
-            <input id="name" type="text" name="name" placeholder="e.g. laptop, ci-pipeline">
+            <input id="name" type="text" name="name" placeholder="e.g. laptop, ci-pipeline" maxlength="63" title="Lowercase alphanumeric characters or '-', max 63 chars, must start and end alphanumeric (a Kubernetes-style name)." required>
           </div>
           <div class="field">
             <label for="ttl">Expires after</label>
