@@ -66,9 +66,16 @@
           <select name="tenantId" aria-label="Tenant to grant">
             {{range .Tenants}}<option value="{{.TenantID}}">{{.TenantID}}</option>{{end}}
           </select>
-          <input type="text" name="roles" placeholder="Roles, e.g. member,viewer" aria-label="Roles" required>
+          <input type="text" name="roles" placeholder="Roles, e.g. member,viewer" aria-label="Roles" title="Each role must be a Kubernetes-style name: lowercase alphanumeric or '-', max 63 chars.">
+          {{if .User.Admin}}
+          <label class="checkbox">
+            <input type="checkbox" name="admin" value="true">
+            Grant as tenant admin (no role needed)
+          </label>
+          {{end}}
           <button type="submit" class="link-button">Grant tenant access</button>
         </form>
+        <p class="danger-copy">A role is required unless granting as tenant admin — that overrides any role with full access to this tenant.</p>
       </section>
 
       <section>
@@ -110,7 +117,7 @@
         {{end}}
 
         <form method="post" action="/web/users/{{.Subject.Subject}}/pats" class="form form-row form-compact">
-          <input type="text" name="name" placeholder="Name, e.g. laptop" aria-label="Token name">
+          <input type="text" name="name" placeholder="Name, e.g. laptop" aria-label="Token name" required>
           <input type="text" name="ttl" placeholder="Expires after, e.g. 720h — blank for no expiry" aria-label="Token expiry">
           <button type="submit" class="link-button">Issue token</button>
         </form>
