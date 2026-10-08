@@ -59,7 +59,12 @@ func TestEnsureTenantAdminRole(t *testing.T) {
 	require.NoError(t, err)
 	perms, found := unstructuredSlice(obj.Object, "spec", "permissions")
 	require.True(t, found)
-	require.Len(t, perms, 1)
+	require.Len(t, perms, 6)
+	for _, p := range perms {
+		perm, ok := p.(map[string]any)
+		require.True(t, ok)
+		require.NotEqual(t, "*", perm["provider"], "ecp matches provider exactly; \"*\" is not a wildcard")
+	}
 
 	// Calling again must overwrite, not conflict — repair relies on this.
 	require.NoError(t, store.EnsureTenantAdminRole(ctx, "tenant-1"))
