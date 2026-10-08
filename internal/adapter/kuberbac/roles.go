@@ -10,9 +10,26 @@ import (
 	"github.com/eu-sovereign-cloud/iam/internal/pkg/kube"
 )
 
-var tenantAdminPermissions = roleSpec{
-	Permissions: []permission{{Provider: "*", Resources: []string{"*"}, Verb: []string{"*"}}},
+// tenantAdminProviders lists the providers the tenant-admin Role covers.
+// ecp compares the permission provider exactly (only resources and verb are
+// glob-matched), so "*" is not a wildcard there and every provider must be
+// listed explicitly, mirroring the spec's system roles.
+var tenantAdminProviders = []string{
+	"seca.authorization",
+	"seca.region",
+	"seca.workspace",
+	"seca.network",
+	"seca.compute",
+	"seca.storage",
 }
+
+var tenantAdminPermissions = func() roleSpec {
+	perms := make([]permission, 0, len(tenantAdminProviders))
+	for _, p := range tenantAdminProviders {
+		perms = append(perms, permission{Provider: p, Resources: []string{"*"}, Verb: []string{"*"}})
+	}
+	return roleSpec{Permissions: perms}
+}()
 
 func roleObject(tenantID string) (*unstructured.Unstructured, error) {
 	obj := &unstructured.Unstructured{}
@@ -27,7 +44,7 @@ func roleObject(tenantID string) (*unstructured.Unstructured, error) {
 }
 
 // EnsureTenantAdminRole creates or overwrites the canonical
-// model.TenantAdminRole Role for tenantID with wildcard permissions.
+// model.TenantAdminRole Role for tenantID with wildcard resources and verbs on every provider.
 // Every call re-applies the full desired spec (true "restore" semantics),
 // so it's safe to call both at tenant creation and repeatedly from repair.
 func (s *Store) EnsureTenantAdminRole(ctx context.Context, tenantID string) error {

@@ -62,7 +62,7 @@ needed (`client-go` is already required by `kubestore`).
   approach `internal/model/token_scope.go` already uses for ecp's
   `TokenScope`.
 - Every tenant gets one IAM-managed `Role` named `model.TenantAdminRole`
-  ("tenant-admin", wildcard permissions), created when the tenant is
+  ("tenant-admin", wildcard resources and verbs on every provider — ecp matches the provider exactly, so `*` is not usable there), created when the tenant is
   created (`CreateTenant`) and deleted when it is (`DeleteTenant`).
 - `Grant` gains a required `Roles []string` field: the ecp role names a
   non-tenant-admin subject is bound to within the tenant via a single
